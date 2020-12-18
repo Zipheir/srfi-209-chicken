@@ -20,18 +20,21 @@
 ;;; SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ;;; Test suite for chibi-scheme (http://synthcode.com/scheme/chibi)
+;;; Adapted for the CHICKEN test egg.
 
-(import (scheme base)
+(import (scheme)
+        (chicken base)
         (srfi 1)
         (srfi 128)
         (srfi 209)
-        (chibi test))
+        (test))
+
+;; (chibi test) shim
+(define-syntax test-not
+  (syntax-rules ()
+    ((_ expr) (test-assert (not expr)))))
 
 ;;;; Utility
-
-(define-syntax constantly
-  (syntax-rules ()
-    ((_ obj) (lambda _ obj))))
 
 (define always (constantly #t))
 (define never (constantly #f))
@@ -469,3 +472,5 @@
   (test-assert (enum-set-empty? (wizard-set)))
   (test-assert (enum-set-member? (wizard gandalf) (wizard-set saruman gandalf)))
 )
+
+(test-exit)
