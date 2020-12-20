@@ -50,8 +50,4 @@
           (srfi 151)
           (srfi 145))
 
-  (define real-comparator
-    (make-comparator real? = < number-hash))
-
-
   (include "209.scm"))
