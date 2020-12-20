@@ -43,10 +43,12 @@
   (import (scheme)
           (chicken base)
           (srfi 1)
+          (only (srfi 69) make-hash-table hash-table-ref/default
+                          hash-table-set!)
+          (only (srfi 113) list->set set<=?)
           (srfi 128)
           (srfi 151)
-          (srfi 145)
-          (srfi 146))
+          (srfi 145))
 
   (define real-comparator
     (make-comparator real? = < number-hash))

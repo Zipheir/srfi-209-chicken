@@ -69,12 +69,11 @@
                    symbol-hash))
 
 (define (make-name-table enums)
-  (mapping-unfold null?
-                  (lambda (enums)
-                    (values (enum-name (car enums)) (car enums)))
-                  cdr
-                  enums
-                  symbol-comparator))
+  (let ((tab (make-hash-table eq?)))
+    (for-each (lambda (e)
+                (hash-table-set! tab (enum-name e) e))
+              enums)
+    tab))
 
 (define (%enum-type=? etype1 etype2)
   (eqv? etype1 etype2))
@@ -138,7 +137,7 @@
 (define (enum-name->enum type name)
   (assume (enum-type? type))
   (assume (symbol? name))
-  (mapping-ref/default (enum-type-name-table type) name #f))
+  (hash-table-ref/default (enum-type-name-table type) name #f))
 
 (define (enum-ordinal->enum enum-type ordinal)
   (assume (enum-type? enum-type))
@@ -345,19 +344,13 @@
   (zero? (bitwise-andc1 (enum-set-bitmap eset1)
                         (enum-set-bitmap eset2))))
 
-(define (%enum-set->name-mapping eset)
-  (mapping-unfold null?
-                  (lambda (syms) (values (car syms) #t))
-                  cdr
-                  (enum-set-map->list enum-name eset)
-                  symbol-comparator))
+(define (%enum-set->name-set eset)
+  (list->set symbol-comparator (enum-set-map->list enum-name eset)))
 
 (define (enum-set-subset? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
-  (mapping<=? symbol-comparator
-              (%enum-set->name-mapping eset1)
-              (%enum-set->name-mapping eset2)))
+  (set<=? (%enum-set->name-set eset1) (%enum-set->name-set eset2)))
 
 (define (enum-set-any? pred eset)
   (assume (procedure? pred))
