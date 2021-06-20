@@ -29,6 +29,7 @@
    enum-set-size enum-set->list enum-set-map->list enum-set-for-each
    enum-set-filter enum-set-remove enum-set-count enum-set-fold
    enum-set->enum-list
+   enum-set-filter! enum-set-remove!
 
    enum-set-union enum-set-intersection enum-set-difference
    enum-set-xor enum-set-complement enum-set-union!
@@ -47,7 +48,18 @@
                           hash-table-set!)
           (only (srfi 113) list->set set<=?)
           (srfi 128)
-          (srfi 151)
+          (srfi 178)
           (srfi 145))
+
+  ;; Missing from SRFI 69.
+  (define (hash-table-unfold stop? mapper successor seed comp)
+    (let ((res (make-hash-table #:test (comparator-equality-predicate comp)
+                                #:hash (comparator-hash-function comp))))
+      (let loop ((seed seed))
+        (if (stop? seed)
+            res
+            (let-values (((k v) (mapper seed)))
+              (hash-table-set! res k v)
+              (loop (successor seed)))))))
 
   (include "209.scm"))
