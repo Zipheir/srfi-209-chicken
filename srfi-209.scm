@@ -45,9 +45,9 @@
           (chicken base)
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
-                          hash-table-set!)
+                          hash-table-set! symbol-hash)
           (only (srfi 113) set set-adjoin! set<=?)
-          (srfi 128)
+          (except (srfi 128) symbol-hash)
           (srfi 178)
           (srfi 145))
 
