@@ -2,3 +2,4 @@
 (uri targz "https://codeload.github.com/Zipheir/srfi-209-chicken/tar.gz/{egg-release}" whole-repo)
 (release "0.1" whole-repo)
 (release "0.2" whole-repo)
+(release "1.1" whole-repo)
