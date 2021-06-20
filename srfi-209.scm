@@ -46,7 +46,7 @@
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
                           hash-table-set!)
-          (only (srfi 113) list->set set<=?)
+          (only (srfi 113) set set-adjoin! set<=?)
           (srfi 128)
           (srfi 178)
           (srfi 145))

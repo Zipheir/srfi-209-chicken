@@ -371,15 +371,16 @@
   (bitvector-subset? (enum-set-bitvector eset2)
                      (enum-set-bitvector eset1)))
 
-;; This uses lists as sets and is thus not very efficient.
-;; An implementation with SRFI 113 or some other set library
-;; might want to optimize this.
 (define (enum-set-subset? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
-  (lset<= eqv?
-          (enum-set-map->list enum-name eset1)
-          (enum-set-map->list enum-name eset2)))
+  (let ((make-name-set
+         (lambda (eset)
+           (enum-set-fold (lambda (e s)
+                            (set-adjoin! s (enum-name e)))
+                          (set)
+                          eset))))
+    (set<=? (make-name-set eset1) (make-name-set eset2))))
 
 (define (enum-set-any? pred eset)
   (assume (procedure? pred))
