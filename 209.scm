@@ -378,7 +378,7 @@
          (lambda (eset)
            (enum-set-fold (lambda (e s)
                             (set-adjoin! s (enum-name e)))
-                          (set)
+                          (set symbol-comparator)
                           eset))))
     (set<=? (make-name-set eset1) (make-name-set eset2))))
 
