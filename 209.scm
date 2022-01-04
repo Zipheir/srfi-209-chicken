@@ -22,9 +22,11 @@
 
 ;;;; Utility
 
+(: exact-natural? (* --> boolean))
 (define (exact-natural? obj)
   (and (exact-integer? obj) (not (negative? obj))))
 
+(: bitvector-subset? (bitvector bitvector --> boolean))
 (define (bitvector-subset? vec1 vec2)
   (let loop ((i (- (bitvector-length vec1) 1)))
     (cond ((< i 0) #t)
@@ -35,21 +37,30 @@
 
 ;;;; Types
 
+(define-type comparator (struct comparator))
+
 (define-record-type <enum-type>
   (make-raw-enum-type enum-vector name-table comparator)
   enum-type?
-  (enum-vector enum-type-enum-vector set-enum-type-enum-vector!)
-  (name-table enum-type-name-table set-enum-type-name-table!)
-  (comparator enum-type-comparator set-enum-type-comparator!))
+  (enum-vector enum-type-enum-vector set-enum-type-enum-vector!
+    : vector)
+  (name-table enum-type-name-table set-enum-type-name-table! : *)  ; hash-table
+  (comparator enum-type-comparator set-enum-type-comparator!
+    : (struct comparator)))
+
+(define-type enum-type (struct <enum-type>))
 
 (define-record-type <enum>
   (make-enum type name ordinal value)
   enum?
-  (type enum-type)
-  (name enum-name)
-  (ordinal enum-ordinal)
-  (value enum-value))
+  (type enum-type : enum-type)
+  (name enum-name : symbol)
+  (ordinal enum-ordinal : fixnum)
+  (value enum-value : *))
 
+(define-type enum (struct <enum>))
+
+(: make-enum-type ((list-of (or symbol (list-of symbol *))) -> enum-type))
 (define (make-enum-type names+vals)
   (assume (or (pair? names+vals) (null? names+vals)))
   (let* ((type (make-raw-enum-type #f #f #f))
@@ -59,6 +70,8 @@
     (set-enum-type-comparator! type (make-enum-comparator type))
     type))
 
+(: generate-enums
+   (enum-type (list-of (or symbol (list-of symbol *))) -> (list-of enum)))
 (define (generate-enums type names+vals)
   (map (lambda (elt ord)
          (cond ((and (pair? elt) (= 2 (length elt)) (symbol? (car elt)))
@@ -68,6 +81,7 @@
        names+vals
        (iota (length names+vals))))
 
+(: symbol-comparator comparator)
 (define symbol-comparator
   (make-comparator symbol?
                    eqv?
@@ -76,6 +90,7 @@
                                (symbol->string sym2)))
                    symbol-hash))
 
+(: make-name-table (enums -> *))  ; hash-table
 (define (make-name-table enums)
   (hash-table-unfold null?
                      (lambda (enums)
@@ -84,9 +99,11 @@
                      enums
                      symbol-comparator))
 
+(: %enum-type=? (enum-type enum-type -> boolean))
 (define (%enum-type=? etype1 etype2)
   (eqv? etype1 etype2))
 
+(: make-enum-comparator (enum-type -> comparator))
 (define (make-enum-comparator type)
   (make-comparator
    (lambda (obj)
@@ -99,17 +116,21 @@
 
 ;;;; Predicates
 
+(: enum-type-contains? (enum-type enum --> boolean))
 (define (enum-type-contains? type enum)
   (assume (enum-type? type))
   (assume (enum? enum))
   ((comparator-type-test-predicate (enum-type-comparator type)) enum))
 
+(: %enum-type-contains?/no-check (enum-type enum --> boolean))
 (define (%enum-type-contains?/no-check type enum)
   ((comparator-type-test-predicate (enum-type-comparator type)) enum))
 
+(: %well-typed-enum? (enum-type * --> boolean))
 (define (%well-typed-enum? type obj)
   (and (enum? obj) (%enum-type-contains?/no-check type obj)))
 
+(: %compare-enums (procedure (list-of enum) --> boolean))
 (define (%compare-enums compare enums)
   (assume (and (pair? enums) (pair? (cdr enums)))
           "invalid number of arguments")
@@ -119,6 +140,7 @@
             "invalid arguments")
     (apply compare (enum-type-comparator type) enums)))
 
+(: enum=? (enum enum #!rest enum --> boolean))
 (define (enum=? enum1 enum2 . enums)
   (assume (enum? enum1))
   (let* ((type (enum-type enum1))
@@ -131,23 +153,29 @@
                    "enum=?: invalid arguments")
            (apply =? comp enum1 enum2 enums)))))
 
+(: enum<? (#!rest enums --> boolean))
 (define (enum<? . enums) (%compare-enums <? enums))
 
+(: enum>? (#!rest enums --> boolean))
 (define (enum>? . enums) (%compare-enums >? enums))
 
+(: enum<=? (#!rest enums --> boolean))
 (define (enum<=? . enums) (%compare-enums <=? enums))
 
+(: enum>=? (#!rest enums --> boolean))
 (define (enum>=? . enums) (%compare-enums >=? enums))
 
 ;;;; Enum finders
 
 ;;; Core procedures
 
+(: enum-name->enum (enum-type symbol --> (or enum false)))
 (define (enum-name->enum type name)
   (assume (enum-type? type))
   (assume (symbol? name))
   (hash-table-ref/default (enum-type-name-table type) name #f))
 
+(: enum-ordinal->enum (enum-type fixnum --> (or enum false)))
 (define (enum-ordinal->enum enum-type ordinal)
   (assume (enum-type? enum-type))
   (assume (exact-natural? ordinal))
@@ -155,57 +183,69 @@
        (vector-ref (enum-type-enum-vector enum-type) ordinal)))
 
 ;; Fast version for internal use.
+(: %enum-ordinal->enum-no-check (enum-type fixnum --> enum))
 (define (%enum-ordinal->enum-no-check enum-type ordinal)
   (vector-ref (enum-type-enum-vector enum-type) ordinal))
 
 ;;; Derived procedures
 
+(: %enum-project (enum-type procedure * (enum -> a) -> a))
 (define (%enum-project type finder key proc)
   (assume (enum-type? type))
   (cond ((finder type key) => proc)
         (else (error "no enum found" type key))))
 
+(: enum-name->ordinal (enum-type symbol -> fixnum))
 (define (enum-name->ordinal type name)
   (assume (symbol? name))
   (%enum-project type enum-name->enum name enum-ordinal))
 
+(: enum-name->value (enum-type symbol -> *))
 (define (enum-name->value type name)
   (assume (symbol? name))
   (%enum-project type enum-name->enum name enum-value))
 
+(: enum-ordinal->name (enum-type fixnum -> symbol))
 (define (enum-ordinal->name type ordinal)
   (assume (exact-natural? ordinal))
   (%enum-project type %enum-ordinal->enum-no-check ordinal enum-name))
 
+(: enum-ordinal->value (enum-type fixnum -> *))
 (define (enum-ordinal->value type ordinal)
   (assume (exact-natural? ordinal))
   (%enum-project type %enum-ordinal->enum-no-check ordinal enum-value))
 
 ;;;; Enum type accessors
 
+(: enum-type-size (enum-type --> fixnum))
 (define (enum-type-size type)
   (assume (enum-type? type))
   (vector-length (enum-type-enum-vector type)))
 
+(: enum-min (enum-type --> enum))
 (define (enum-min type)
   (assume (enum-type? type))
   (vector-ref (enum-type-enum-vector type) 0))
 
+(: enum-max (enum-type --> enum))
 (define (enum-max type)
   (assume (enum-type? type))
   (let ((vec (enum-type-enum-vector type)))
     (vector-ref vec (- (vector-length vec) 1))))
 
+(: enum-type-enums (enum-type --> (list-of enums)))
 (define (enum-type-enums type)
   (assume (enum-type? type))
   (vector->list (enum-type-enum-vector type)))
 
+(: enum-type-names (enum-type --> (list-of symbol)))
 (define (enum-type-names type)
   (assume (enum-type? type))
   (let ((vec (enum-type-enum-vector type)))
     (list-tabulate (vector-length vec)
                    (lambda (n) (enum-name (vector-ref vec n))))))
 
+(: enum-type-values (enum-type --> list))
 (define (enum-type-values type)
   (assume (enum-type? type))
   (let ((vec (enum-type-enum-vector type)))
@@ -214,10 +254,12 @@
 
 ;;;; Enum object procedures
 
+(: enum-next (enum --> (or enum false)))
 (define (enum-next enum)
   (assume (enum? enum))
   (enum-ordinal->enum (enum-type enum) (+ (enum-ordinal enum) 1)))
 
+(: enum-prev (enum --> (or enum false)))
 (define (enum-prev enum)
   (assume (enum? enum))
   (let ((ord (enum-ordinal enum)))
@@ -229,19 +271,23 @@
 (define-record-type <enum-set>
   (make-enum-set type bitvector)
   enum-set?
-  (type enum-set-type)
-  (bitvector enum-set-bitvector set-enum-set-bitvector!))
+  (type enum-set-type : enum-type)
+  (bitvector enum-set-bitvector set-enum-set-bitvector! : *)) ; bitvector
 
+(: enum-empty-set (enum-type -> enum-set))
 (define (enum-empty-set type)
   (assume (enum-type? type))
   (make-enum-set type (make-bitvector (enum-type-size type) #f)))
 
+(: enum-type->enum-set (enum-type -> enum-set))
 (define (enum-type->enum-set type)
   (assume (enum-type? type))
   (make-enum-set type (make-bitvector (enum-type-size type) #t)))
 
+(: enum-set (enum-type #!rest enum -> enum-set))
 (define (enum-set type . enums) (list->enum-set type enums))
 
+(: list->enum-set (enum-type (list-of enum) -> enum-set))
 (define (list->enum-set type enums)
   (assume (or (pair? enums) (null? enums)))
   (let ((vec (make-bitvector (enum-type-size type) #f)))
@@ -253,6 +299,7 @@
 
 ;; Returns a set of enums drawn from the enum-type/-set src with
 ;; the same names as the enums of eset.
+(: enum-set-projection ((or enum-type enum-set) eset -> enum-set))
 (define (enum-set-projection src eset)
   (assume (or (enum-type? src) (enum-set? src)))
   (assume (enum-set? eset))
@@ -263,15 +310,18 @@
                            (enum-name->enum type (enum-name enum)))
                          eset))))
 
+(: enum-set-copy (enum-set -> enum-set))
 (define (enum-set-copy eset)
   (make-enum-set (enum-set-type eset)
                  (bitvector-copy (enum-set-bitvector eset))))
 
 ;; [Deprecated]
+(: make-enumeration ((list-of symbol) -> enum-set))
 (define (make-enumeration names)
   (enum-type->enum-set (make-enum-type (zip names names))))
 
 ;; [Deprecated]
+(: enum-set-universe (enum-set -> enum-set))
 (define (enum-set-universe eset)
   (assume (enum-set? eset))
   (enum-type->enum-set (enum-set-type eset)))
@@ -279,17 +329,19 @@
 ;; [Deprecated]  Returns a procedure which takes a list of symbols
 ;; and returns an enum set containing the corresponding enums.  This
 ;; extracts the type of eset, but otherwise ignores this argument.
+(: enum-set-constructor (enum-set -> ((list-of enum) -> enum-set)))
 (define (enum-set-constructor eset)
   (assume (enum-set? eset))
   (let ((type (enum-set-type eset)))
     (lambda (names)
       (list->enum-set type
-                      (map (lambda (sym) (enum-name->enum type sym))
+                      (map (lambda (sym) (enum-name->enum type sym)) ; FIXME
                            names)))))
 
 ;; [Deprecated] Returns a procedure which takes a symbol and returns
 ;; the corresponding enum ordinal or #f.  This doesn't make any use
 ;; of eset, beyond pulling out its enum type.
+(: enum-set-indexer (enum-set --> (symbol -> (or fixnum #f))))
 (define (enum-set-indexer eset)
   (assume (enum-set? eset))
   (let ((type (enum-set-type eset)))
@@ -299,6 +351,7 @@
 
 ;;;; Enum set predicates
 
+(: enum-set-contains? (enum-set enum --> boolean))
 (define (enum-set-contains? eset enum)
   (assume (enum-set? eset))
   (assume (%well-typed-enum? (enum-set-type eset) enum)
@@ -306,22 +359,27 @@
   (bitvector-ref/bool (enum-set-bitvector eset) (enum-ordinal enum)))
 
 ;; FIXME: Avoid double (type, then set) lookup.
+(: enum-set-member? (symbol enum-set --> boolean))
 (define (enum-set-member? name eset)
   (assume (symbol? name))
   (assume (enum-set? eset))
   (bitvector-ref/bool (enum-set-bitvector eset)
                       (enum-name->ordinal (enum-set-type eset) name)))
 
+(: %enum-set-type=? eset1 eset2)
 (define (%enum-set-type=? eset1 eset2)
   (%enum-type=? (enum-set-type eset1) (enum-set-type eset2)))
 
+(: enum-set-empty? eset)
 (define (enum-set-empty? eset)
   (assume (enum-set? eset))
   (zero? (bitvector-count #t (enum-set-bitvector eset))))
 
+(: bit-nand a b)
 (define (bit-nand a b)
   (not (and (= 1 a) (= 1 b))))
 
+(: enum-set-disjoint? eset1 eset2)
 (define (enum-set-disjoint? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -335,10 +393,12 @@
                            (bitvector-ref/int vec2 i))
                  (loop (+ i 1))))))))
 
+(: enum-set=? eset1 eset2)
 (define (enum-set=? eset1 eset2)
   (assume (%enum-type=? (enum-set-type eset1) (enum-set-type eset2)))
   (bitvector=? (enum-set-bitvector eset1) (enum-set-bitvector eset2)))
 
+(: enum-set<? eset1 eset2)
 (define (enum-set<? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -348,6 +408,7 @@
     (and (bitvector-subset? vec1 vec2)
          (not (bitvector=? vec1 vec2)))))
 
+(: enum-set>? eset1 eset2)
 (define (enum-set>? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -357,6 +418,7 @@
     (and (bitvector-subset? vec2 vec1)
          (not (bitvector=? vec1 vec2)))))
 
+(: enum-set<=? eset1 eset2)
 (define (enum-set<=? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -364,6 +426,7 @@
   (bitvector-subset? (enum-set-bitvector eset1)
                      (enum-set-bitvector eset2)))
 
+(: enum-set>=? eset1 eset2)
 (define (enum-set>=? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -371,6 +434,7 @@
   (bitvector-subset? (enum-set-bitvector eset2)
                      (enum-set-bitvector eset1)))
 
+(: enum-set-subset? eset1 eset2)
 (define (enum-set-subset? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -382,6 +446,7 @@
                           eset))))
     (lset<= eq? (names eset1) (names eset2))))
 
+(: enum-set-any? pred eset)
 (define (enum-set-any? pred eset)
   (assume (procedure? pred))
   (call-with-current-continuation
@@ -390,6 +455,7 @@
                     #f
                     eset))))
 
+(: enum-set-every? pred eset)
 (define (enum-set-every? pred eset)
   (assume (procedure? pred))
   (call-with-current-continuation
@@ -400,9 +466,11 @@
 
 ;;;; Enum set mutators
 
+(: enum-set-adjoin eset . enums)
 (define (enum-set-adjoin eset . enums)
   (apply enum-set-adjoin! (enum-set-copy eset) enums))
 
+(: enum-set-adjoin!
 (define enum-set-adjoin!
   (case-lambda
     ((eset enum)                 ; fast path
@@ -421,9 +489,11 @@
                  enums)
        eset))))
 
+(: enum-set-delete eset . enums)
 (define (enum-set-delete eset . enums)
   (apply enum-set-delete! (enum-set-copy eset) enums))
 
+(: enum-set-delete!
 (define enum-set-delete!
   (case-lambda
     ((eset enum)                ; fast path
@@ -435,9 +505,11 @@
     ((eset . enums)             ; variadic path
      (enum-set-delete-all! eset enums))))
 
+(: enum-set-delete-all eset enums)
 (define (enum-set-delete-all eset enums)
   (enum-set-delete-all! (enum-set-copy eset) enums))
 
+(: enum-set-delete-all! eset enums)
 (define (enum-set-delete-all! eset enums)
   (assume (enum-set? eset))
   (assume (or (pair? enums) (null? enums)))
@@ -453,18 +525,22 @@
 
 ;;;; Enum set operations
 
+(: enum-set-size eset)
 (define (enum-set-size eset)
   (assume (enum-set? eset))
   (bitvector-count #t (enum-set-bitvector eset)))
 
+(: enum-set->enum-list eset)
 (define (enum-set->enum-list eset)
   (assume (enum-set? eset))
   (enum-set-map->list values eset))
 
+(: enum-set->list eset)
 (define (enum-set->list eset)
   (enum-set-map->list enum-name eset))
 
 ;; Slightly complicated by the order in which proc is applied.
+(: enum-set-map->list proc eset)
 (define (enum-set-map->list proc eset)
   (assume (procedure? proc))
   (assume (enum-set? eset))
@@ -481,13 +557,16 @@
                (else (build (+ i 1)))))))
       (build 0))))
 
+(: enum-set-count pred eset)
 (define (enum-set-count pred eset)
   (assume (procedure? pred))
   (enum-set-fold (lambda (e n) (if (pred e) (+ n 1) n)) 0 eset))
 
+(: enum-set-filter pred eset)
 (define (enum-set-filter pred eset)
   (enum-set-filter! pred (enum-set-copy eset)))
 
+(: enum-set-filter! pred eset)
 (define (enum-set-filter! pred eset)
   (assume (procedure? pred))
   (assume (enum-set? eset))
@@ -501,9 +580,11 @@
              (loop (- i 1)))
             (else (loop (- i 1)))))))
 
+(: enum-set-remove pred eset)
 (define (enum-set-remove pred eset)
   (enum-set-remove! pred (enum-set-copy eset)))
 
+(: enum-set-remove! pred eset)
 (define (enum-set-remove! pred eset)
   (assume (procedure? pred))
   (assume (enum-set? eset))
@@ -517,10 +598,12 @@
              (loop (- i 1)))
             (else (loop (- i 1)))))))
 
+(: enum-set-for-each proc eset)
 (define (enum-set-for-each proc eset)
   (assume (procedure? proc))
   (enum-set-fold (lambda (e _) (proc e)) '() eset))
 
+(: enum-set-fold proc nil eset)
 (define (enum-set-fold proc nil eset)
   (assume (procedure? proc))
   (assume (enum-set? eset))
@@ -536,6 +619,7 @@
 
 ;;;; Enum set logical operations
 
+(: %enum-set-logical-op bv-proc eset1 eset2)
 (define (%enum-set-logical-op bv-proc eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -545,6 +629,7 @@
                           (enum-set-bitvector eset2))))
 
 ;; bv-proc mutates eset1.
+(: %enum-set-logical-op! bv-proc eset1 eset2)
 (define (%enum-set-logical-op! bv-proc eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -552,35 +637,45 @@
   (bv-proc (enum-set-bitvector eset1) (enum-set-bitvector eset2))
   eset1)
 
+(: enum-set-union
 (define enum-set-union
   (cut %enum-set-logical-op bitvector-ior <> <>))
 
+(: enum-set-intersection
 (define enum-set-intersection
   (cut %enum-set-logical-op bitvector-and <> <>))
 
+(: enum-set-difference
 (define enum-set-difference
   (cut %enum-set-logical-op bitvector-andc2 <> <>))
 
+(: enum-set-xor
 (define enum-set-xor
   (cut %enum-set-logical-op bitvector-xor <> <>))
 
+(: enum-set-union!
 (define enum-set-union!
   (cut %enum-set-logical-op! bitvector-ior! <> <>))
 
+(: enum-set-intersection!
 (define enum-set-intersection!
   (cut %enum-set-logical-op! bitvector-and! <> <>))
 
+(: enum-set-difference!
 (define enum-set-difference!
   (cut %enum-set-logical-op! bitvector-andc2! <> <>))
 
+(: enum-set-xor!
 (define enum-set-xor!
   (cut %enum-set-logical-op! bitvector-xor! <> <>))
 
+(: enum-set-complement eset)
 (define (enum-set-complement eset)
   (assume (enum-set? eset))
   (make-enum-set (enum-set-type eset)
                  (bitvector-not (enum-set-bitvector eset))))
 
+(: enum-set-complement! eset)
 (define (enum-set-complement! eset)
   (assume (enum-set? eset))
   (bitvector-not! (enum-set-bitvector eset))

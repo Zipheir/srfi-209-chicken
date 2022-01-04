@@ -43,11 +43,13 @@
 
   (import (scheme)
           (chicken base)
+          (chicken type)
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
                           hash-table-set! symbol-hash)
           (except (srfi 128) symbol-hash)
           (srfi 178)
+          typed-records
           )
 
   (define-syntax assume
