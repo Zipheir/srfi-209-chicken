@@ -370,20 +370,19 @@
   (bitvector-ref/bool (enum-set-bitvector eset)
                       (enum-name->ordinal (enum-set-type eset) name)))
 
-(: %enum-set-type=? eset1 eset2)
+(: %enum-set-type=? (enum-set enum-set --> boolean))
 (define (%enum-set-type=? eset1 eset2)
   (%enum-type=? (enum-set-type eset1) (enum-set-type eset2)))
 
-(: enum-set-empty? eset)
+(: enum-set-empty? (enum-set --> boolean))
 (define (enum-set-empty? eset)
   (assume (enum-set? eset))
   (zero? (bitvector-count #t (enum-set-bitvector eset))))
 
-(: bit-nand a b)
 (define (bit-nand a b)
   (not (and (= 1 a) (= 1 b))))
 
-(: enum-set-disjoint? eset1 eset2)
+(: enum-set-disjoint? (enum-set enum-set --> boolean))
 (define (enum-set-disjoint? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -397,12 +396,12 @@
                            (bitvector-ref/int vec2 i))
                  (loop (+ i 1))))))))
 
-(: enum-set=? eset1 eset2)
+(: enum-set=? (enum-set enum-set --> boolean))
 (define (enum-set=? eset1 eset2)
   (assume (%enum-type=? (enum-set-type eset1) (enum-set-type eset2)))
   (bitvector=? (enum-set-bitvector eset1) (enum-set-bitvector eset2)))
 
-(: enum-set<? eset1 eset2)
+(: enum-set<? (enum-set enum-set --> boolean))
 (define (enum-set<? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -412,7 +411,7 @@
     (and (bitvector-subset? vec1 vec2)
          (not (bitvector=? vec1 vec2)))))
 
-(: enum-set>? eset1 eset2)
+(: enum-set>? (enum-set enum-set --> boolean))
 (define (enum-set>? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -422,7 +421,7 @@
     (and (bitvector-subset? vec2 vec1)
          (not (bitvector=? vec1 vec2)))))
 
-(: enum-set<=? eset1 eset2)
+(: enum-set<=? (enum-set enum-set --> boolean))
 (define (enum-set<=? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -430,7 +429,7 @@
   (bitvector-subset? (enum-set-bitvector eset1)
                      (enum-set-bitvector eset2)))
 
-(: enum-set>=? eset1 eset2)
+(: enum-set>=? (enum-set enum-set --> boolean))
 (define (enum-set>=? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -438,7 +437,7 @@
   (bitvector-subset? (enum-set-bitvector eset2)
                      (enum-set-bitvector eset1)))
 
-(: enum-set-subset? eset1 eset2)
+(: enum-set-subset? (enum-set enum-set --> boolean))
 (define (enum-set-subset? eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -450,7 +449,7 @@
                           eset))))
     (lset<= eq? (names eset1) (names eset2))))
 
-(: enum-set-any? pred eset)
+(: enum-set-any? ((enum -> boolean) enum-set -> boolean))
 (define (enum-set-any? pred eset)
   (assume (procedure? pred))
   (call-with-current-continuation
@@ -459,7 +458,7 @@
                     #f
                     eset))))
 
-(: enum-set-every? pred eset)
+(: enum-set-every? ((enum -> boolean) enum-set -> boolean))
 (define (enum-set-every? pred eset)
   (assume (procedure? pred))
   (call-with-current-continuation
@@ -470,11 +469,11 @@
 
 ;;;; Enum set mutators
 
-(: enum-set-adjoin eset . enums)
+(: enum-set-adjoin (enum-set #!rest enums -> enum-set))
 (define (enum-set-adjoin eset . enums)
   (apply enum-set-adjoin! (enum-set-copy eset) enums))
 
-(: enum-set-adjoin!
+(: enum-set-adjoin! (enum-set #!rest enums -> enum-set))
 (define enum-set-adjoin!
   (case-lambda
     ((eset enum)                 ; fast path
@@ -493,11 +492,11 @@
                  enums)
        eset))))
 
-(: enum-set-delete eset . enums)
+(: enum-set-delete (enum-set #!rest enums -> enum-set))
 (define (enum-set-delete eset . enums)
   (apply enum-set-delete! (enum-set-copy eset) enums))
 
-(: enum-set-delete!
+(: enum-set-delete! (enum-set #!rest enums -> enum-set))
 (define enum-set-delete!
   (case-lambda
     ((eset enum)                ; fast path
@@ -509,11 +508,11 @@
     ((eset . enums)             ; variadic path
      (enum-set-delete-all! eset enums))))
 
-(: enum-set-delete-all eset enums)
+(: enum-set-delete-all (enum-set (list-of enum) -> enum-set))
 (define (enum-set-delete-all eset enums)
   (enum-set-delete-all! (enum-set-copy eset) enums))
 
-(: enum-set-delete-all! eset enums)
+(: enum-set-delete-all! (enum-set (list-of enum) -> enum-set))
 (define (enum-set-delete-all! eset enums)
   (assume (enum-set? eset))
   (assume (or (pair? enums) (null? enums)))
@@ -529,22 +528,22 @@
 
 ;;;; Enum set operations
 
-(: enum-set-size eset)
+(: enum-set-size (enum-set --> fixnum))
 (define (enum-set-size eset)
   (assume (enum-set? eset))
   (bitvector-count #t (enum-set-bitvector eset)))
 
-(: enum-set->enum-list eset)
+(: enum-set->enum-list (enum-set --> (list-of enum)))
 (define (enum-set->enum-list eset)
   (assume (enum-set? eset))
   (enum-set-map->list values eset))
 
-(: enum-set->list eset)
+(: enum-set->list (enum-set --> (list-of symbol)))
 (define (enum-set->list eset)
   (enum-set-map->list enum-name eset))
 
 ;; Slightly complicated by the order in which proc is applied.
-(: enum-set-map->list proc eset)
+(: enum-set-map->list ((enum -> a) enum-set -> (list-of a)))
 (define (enum-set-map->list proc eset)
   (assume (procedure? proc))
   (assume (enum-set? eset))
@@ -561,16 +560,16 @@
                (else (build (+ i 1)))))))
       (build 0))))
 
-(: enum-set-count pred eset)
+(: enum-set-count ((enum -> boolean) enum-set -> fixnum))
 (define (enum-set-count pred eset)
   (assume (procedure? pred))
   (enum-set-fold (lambda (e n) (if (pred e) (+ n 1) n)) 0 eset))
 
-(: enum-set-filter pred eset)
+(: enum-set-filter ((enum -> boolean) enum-set -> enum-set))
 (define (enum-set-filter pred eset)
   (enum-set-filter! pred (enum-set-copy eset)))
 
-(: enum-set-filter! pred eset)
+(: enum-set-filter! ((enum -> boolean) enum-set -> enum-set))
 (define (enum-set-filter! pred eset)
   (assume (procedure? pred))
   (assume (enum-set? eset))
@@ -584,11 +583,11 @@
              (loop (- i 1)))
             (else (loop (- i 1)))))))
 
-(: enum-set-remove pred eset)
+(: enum-set-remove ((enum -> boolean) enum-set -> enum-set))
 (define (enum-set-remove pred eset)
   (enum-set-remove! pred (enum-set-copy eset)))
 
-(: enum-set-remove! pred eset)
+(: enum-set-remove! ((enum -> boolean) enum-set -> enum-set))
 (define (enum-set-remove! pred eset)
   (assume (procedure? pred))
   (assume (enum-set? eset))
@@ -602,12 +601,12 @@
              (loop (- i 1)))
             (else (loop (- i 1)))))))
 
-(: enum-set-for-each proc eset)
+(: enum-set-for-each (procedure enum-set -> undefined))
 (define (enum-set-for-each proc eset)
   (assume (procedure? proc))
   (enum-set-fold (lambda (e _) (proc e)) '() eset))
 
-(: enum-set-fold proc nil eset)
+(: enum-set-fold ((enum * -> *) * enum-set -> *))
 (define (enum-set-fold proc nil eset)
   (assume (procedure? proc))
   (assume (enum-set? eset))
@@ -623,7 +622,7 @@
 
 ;;;; Enum set logical operations
 
-(: %enum-set-logical-op bv-proc eset1 eset2)
+(: %enum-set-logical-op ((* * -> *) enum-set enum-set -> enum-set))
 (define (%enum-set-logical-op bv-proc eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -633,7 +632,7 @@
                           (enum-set-bitvector eset2))))
 
 ;; bv-proc mutates eset1.
-(: %enum-set-logical-op! bv-proc eset1 eset2)
+(: %enum-set-logical-op! ((* * -> *) enum-set enum-set -> enum-set))
 (define (%enum-set-logical-op! bv-proc eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -641,45 +640,45 @@
   (bv-proc (enum-set-bitvector eset1) (enum-set-bitvector eset2))
   eset1)
 
-(: enum-set-union
+(: enum-set-union (enum-set enum-set -> enum-set))
 (define enum-set-union
   (cut %enum-set-logical-op bitvector-ior <> <>))
 
-(: enum-set-intersection
+(: enum-set-intersection (enum-set enum-set -> enum-set))
 (define enum-set-intersection
   (cut %enum-set-logical-op bitvector-and <> <>))
 
-(: enum-set-difference
+(: enum-set-difference (enum-set enum-set -> enum-set))
 (define enum-set-difference
   (cut %enum-set-logical-op bitvector-andc2 <> <>))
 
-(: enum-set-xor
+(: enum-set-xor (enum-set enum-set -> enum-set))
 (define enum-set-xor
   (cut %enum-set-logical-op bitvector-xor <> <>))
 
-(: enum-set-union!
+(: enum-set-union! (enum-set enum-set -> enum-set))
 (define enum-set-union!
   (cut %enum-set-logical-op! bitvector-ior! <> <>))
 
-(: enum-set-intersection!
+(: enum-set-intersection! (enum-set enum-set -> enum-set))
 (define enum-set-intersection!
   (cut %enum-set-logical-op! bitvector-and! <> <>))
 
-(: enum-set-difference!
+(: enum-set-difference! (enum-set enum-set -> enum-set))
 (define enum-set-difference!
   (cut %enum-set-logical-op! bitvector-andc2! <> <>))
 
-(: enum-set-xor!
+(: enum-set-xor! (enum-set enum-set -> enum-set))
 (define enum-set-xor!
   (cut %enum-set-logical-op! bitvector-xor! <> <>))
 
-(: enum-set-complement eset)
+(: enum-set-complement (enum-set -> enum-set))
 (define (enum-set-complement eset)
   (assume (enum-set? eset))
   (make-enum-set (enum-set-type eset)
                  (bitvector-not (enum-set-bitvector eset))))
 
-(: enum-set-complement! eset)
+(: enum-set-complement! (enum-set -> enum-set))
 (define (enum-set-complement! eset)
   (assume (enum-set? eset))
   (bitvector-not! (enum-set-bitvector eset))
