@@ -46,7 +46,6 @@
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
                           hash-table-set! symbol-hash)
-          (only (srfi 113) set set-adjoin! set<=?)
           (except (srfi 128) symbol-hash)
           (srfi 178)
           )
