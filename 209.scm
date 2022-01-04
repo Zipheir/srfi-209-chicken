@@ -536,6 +536,15 @@
 
 ;;;; Enum set logical operations
 
+(define (%enum-set-logical-op bv-proc eset1 eset2)
+  (assume (enum-set? eset1))
+  (assume (enum-set? eset2))
+  (assume (%enum-set-type=? eset1 eset2) "enum sets have different types")
+  (make-enum-set (enum-set-type eset1)
+                 (bv-proc (enum-set-bitvector eset1)
+                          (enum-set-bitvector eset2))))
+
+;; bv-proc mutates eset1.
 (define (%enum-set-logical-op! bv-proc eset1 eset2)
   (assume (enum-set? eset1))
   (assume (enum-set? eset2))
@@ -543,32 +552,34 @@
   (bv-proc (enum-set-bitvector eset1) (enum-set-bitvector eset2))
   eset1)
 
-(define (enum-set-union eset1 eset2)
-  (%enum-set-logical-op! bitvector-ior! (enum-set-copy eset1) eset2))
+(define enum-set-union
+  (cut %enum-set-logical-op bitvector-ior <> <>))
 
-(define (enum-set-intersection eset1 eset2)
-  (%enum-set-logical-op! bitvector-and! (enum-set-copy eset1) eset2))
+(define enum-set-intersection
+  (cut %enum-set-logical-op bitvector-and <> <>))
 
-(define (enum-set-difference eset1 eset2)
-  (%enum-set-logical-op! bitvector-andc2! (enum-set-copy eset1) eset2))
+(define enum-set-difference
+  (cut %enum-set-logical-op bitvector-andc2 <> <>))
 
-(define (enum-set-xor eset1 eset2)
-  (%enum-set-logical-op! bitvector-xor! (enum-set-copy eset1) eset2))
+(define enum-set-xor
+  (cut %enum-set-logical-op bitvector-xor <> <>))
 
-(define (enum-set-union! eset1 eset2)
-  (%enum-set-logical-op! bitvector-ior! eset1 eset2))
+(define enum-set-union!
+  (cut %enum-set-logical-op! bitvector-ior! <> <>))
 
-(define (enum-set-intersection! eset1 eset2)
-  (%enum-set-logical-op! bitvector-and! eset1 eset2))
+(define enum-set-intersection!
+  (cut %enum-set-logical-op! bitvector-and! <> <>))
 
-(define (enum-set-difference! eset1 eset2)
-  (%enum-set-logical-op! bitvector-andc2! eset1 eset2))
+(define enum-set-difference!
+  (cut %enum-set-logical-op! bitvector-andc2! <> <>))
 
-(define (enum-set-xor! eset1 eset2)
-  (%enum-set-logical-op! bitvector-xor! eset1 eset2))
+(define enum-set-xor!
+  (cut %enum-set-logical-op! bitvector-xor! <> <>))
 
 (define (enum-set-complement eset)
-  (enum-set-complement! (enum-set-copy eset)))
+  (assume (enum-set? eset))
+  (make-enum-set (enum-set-type eset)
+                 (bitvector-not (enum-set-bitvector eset))))
 
 (define (enum-set-complement! eset)
   (assume (enum-set? eset))
