@@ -60,7 +60,7 @@
 
 (define-type enum (struct <enum>))
 
-(: make-enum-type (list -> enum-type))
+(: make-enum-type ((list-of (or symbol (list symbol *))) -> enum-type))
 (define (make-enum-type names+vals)
   (assume (or (pair? names+vals) (null? names+vals)))
   (let* ((type (make-raw-enum-type #f #f #f))
@@ -70,7 +70,8 @@
     (set-enum-type-comparator! type (make-enum-comparator type))
     type))
 
-(: generate-enums (enum-type list -> (list-of enum)))
+(: generate-enums
+   (enum-type (list-of (or symbol (list symbol *))) -> (list-of enum)))
 (define (generate-enums type names+vals)
   (map (lambda (elt ord)
          (cond ((and (pair? elt) (= 2 (length elt)) (symbol? (car elt)))
