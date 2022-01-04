@@ -247,7 +247,7 @@
   (let ((vec (make-bitvector (enum-type-size type) #f)))
     (for-each (lambda (e)
                 (assume (%well-typed-enum? type e) "ill-typed enum")
-                (bitvector-set! vec (enum-ordinal e) vec))
+                (bitvector-set! vec (enum-ordinal e) #t))
               enums)
     (make-enum-set type vec)))
 
