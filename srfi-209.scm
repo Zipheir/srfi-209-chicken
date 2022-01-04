@@ -49,7 +49,11 @@
           (only (srfi 113) set set-adjoin! set<=?)
           (except (srfi 128) symbol-hash)
           (srfi 178)
-          (srfi 145))
+          )
+
+  (define-syntax assume
+    (syntax-rules ()
+      ((assume . args) (assert . args))))
 
   ;; Missing from SRFI 69.
   (define (hash-table-unfold stop? mapper successor seed comp)
