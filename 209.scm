@@ -335,7 +335,11 @@
   (let ((type (enum-set-type eset)))
     (lambda (names)
       (list->enum-set type
-                      (map (lambda (sym) (enum-name->enum type sym)) ; FIXME
+                      (map (lambda (sym)
+                             (or (enum-name->enum type sym)
+                                 (error "name is not a member of type"
+                                        type
+                                        sym)))
                            names)))))
 
 ;; [Deprecated] Returns a procedure which takes a symbol and returns
