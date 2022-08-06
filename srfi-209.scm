@@ -42,7 +42,7 @@
    )
 
   (import (scheme)
-          (chicken base)
+          (except (chicken base) assert)
           (chicken type)
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
@@ -52,9 +52,13 @@
           typed-records
           )
 
-  (define-syntax assume
+  (define-syntax assert
     (syntax-rules ()
-      ((assume . args) (assert . args))))
+      ((assert loc expr)
+       (assert loc expr "assertion violation"))
+      ((assert loc expr msg)
+       (unless expr
+         (error loc msg 'expr)))))
 
   ;; Missing from SRFI 69.
   (define (hash-table-unfold stop? mapper successor seed comp)
