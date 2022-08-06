@@ -308,9 +308,15 @@
   (let ((type (if (enum-type? src) src (enum-set-type src))))
     (list->enum-set
      type
-     (enum-set-map->list (lambda (enum)
-                           (enum-name->enum type (enum-name enum)))
-                         eset))))
+     (enum-set-map->list
+      (lambda (enum)
+        (let ((name (enum-name enum)))
+          (or (enum-name->enum type name)
+              (error 'enum-set-projection
+                     "enum name not found in type"
+                     name
+                     type))))
+      eset))))
 
 (: enum-set-copy (enum-set -> enum-set))
 (define (enum-set-copy eset)
