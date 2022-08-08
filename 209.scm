@@ -161,16 +161,16 @@
            (apply =? comp enum1 enum2 enums)))))
 
 (: enum<? (#!rest enum --> boolean))
-(define (enum<? . enums) (%compare-enums 'enum<? <? enums))
+(define (enum<? . enums) (%compare-enums <? enums 'enum<?))
 
 (: enum>? (#!rest enum --> boolean))
-(define (enum>? . enums) (%compare-enums 'enum>? >? enums))
+(define (enum>? . enums) (%compare-enums >? enums 'enum>?))
 
 (: enum<=? (#!rest enum --> boolean))
-(define (enum<=? . enums) (%compare-enums 'enum<=? <=? enums))
+(define (enum<=? . enums) (%compare-enums <=? enums 'enum<=?))
 
 (: enum>=? (#!rest enum --> boolean))
-(define (enum>=? . enums) (%compare-enums 'enum>=? >=? enums))
+(define (enum>=? . enums) (%compare-enums >=? enums 'enum>=?))
 
 ;;;; Enum finders
 
