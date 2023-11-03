@@ -37,17 +37,17 @@
                ((x _) x))
              lis))
 
-      (let ((type-name (list-ref expr 1))
+      (let* ((type-name (list-ref expr 1))
             (enum-spec (list-ref expr 2))
-            (constructor (list-ref expr 3)))
-        (check-enum-spec enum-spec)
-        (let ((names (enum-spec-names enum-spec))
+            (constructor (list-ref expr 3))
+              (names (enum-spec-names enum-spec))
               (indices (iota (length enum-spec)))
               (define (rename 'define))
               (define-syntax (rename 'define-syntax))
               (syntax-rules (rename 'syntax-rules))
               (oref (rename '%enum-ordinal->enum-no-check))
               (etype (rename 'etype)))
+        (check-enum-spec enum-spec)
           `(,(rename 'begin)
             (,define ,etype
               (,(rename 'make-enum-type) (quote ,enum-spec)))
@@ -61,7 +61,7 @@
                 ((_ name)
                  (,(rename syntax-error) (quote ,type-name)
                                          "invalid enum name"
-                                         'name))))))))))
+                                         'name)))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding
