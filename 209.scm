@@ -753,25 +753,51 @@
 
 ;;;; Syntax
 
-;; Defines a new enum-type T, binds type-name to a macro which
-;; takes a symbol to an enum in T, and binds constructor to a
-;; macro taking symbols to an enum set of type T.
 (define-syntax define-enum
-  (syntax-rules ()
-    ((_ type-name (name-val ...) constructor)
-     (begin
-      (define etype (make-enum-type '(name-val ...)))
-      (define-syntax type-name
-        (syntax-rules ()
-          ((_ name)
-           (enum-name->enum etype 'name))))
-      (define-syntax constructor
-        (syntax-rules ()
-          ((_ . names)
-           (list->enum-set etype
-                           (map (lambda (s)
-                                  (enum-name->enum etype s))
-                                'names)))))))))
+  (er-macro-transformer
+    (lambda (expr rename compare)
+      (define (check-enum-spec lis)
+        (every (match-lambda
+                 (x (symbol? x))
+                 ((x v) (symbol? x))
+                 (e (syntax-error 'define-enum "invalid enum spec" e)))
+               lis))
+
+      (define (enum-spec-names lis)
+        (map (match-lambda
+               (x x)
+               ((x _) x))
+             lis))
+
+      (let ((type-name (list-ref expr 1))
+            (enum-spec (list-ref expr 2))
+            (constructor (list-ref expr 3)))
+        (check-enum-spec enum-spec)
+        (let ((names (enum-spec-names enum-spec))
+              (indices (iota (length enum-spec)))
+              (define (rename 'define))
+              (define-syntax (rename 'define-syntax))
+              (syntax-rules (rename 'syntax-rules))
+              (etype-vec (rename 'enum-type-enum-vector))
+              (etype (rename 'etype))
+              (evec (rename 'evec)))
+          `(,(rename 'begin)
+            (,define ,etype
+              (,(rename 'make-enum-type) (quote ,enum-spec)))
+
+            (,define ,evec (,etype-vec ,etype))
+
+            (,define-syntax ,type-name
+              (,syntax-rules ,names
+                ,@(map (lambda (nm i)
+                         `((_ ,nm)
+                           (,(rename vector-ref) ,evec ,i)))
+                       names
+                       indices)
+                ((_ name)
+                 (,(rename syntax-error) (quote ,type-name)
+                                         "invalid enum name"
+                                         'name))))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding

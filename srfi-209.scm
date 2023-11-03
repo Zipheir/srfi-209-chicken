@@ -3,6 +3,7 @@
    enum<=? enum>=?
 
    make-enum-type
+   enum-type-enum-vector   ; Needed for macro. Shouldn't be exported.
 
    enum-type enum-name enum-ordinal enum-value
 
@@ -41,6 +42,9 @@
    define-enum define-enumeration
    )
 
+  (import-for-syntax (matchable)
+                     (chicken syntax)
+                     (srfi 1))
   (import (scheme)
           (except (chicken base) assert)
           (chicken type)
