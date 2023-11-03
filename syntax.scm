@@ -24,13 +24,6 @@
 (define-syntax define-enum
   (er-macro-transformer
     (lambda (expr rename compare)
-      (define (check-enum-spec lis)
-        (every (match-lambda
-                 (x (symbol? x))
-                 ((x v) (symbol? x))
-                 (e (syntax-error 'define-enum "invalid enum spec" e)))
-               lis))
-
       (define (unique-ids? list)
         (let unique ((list list))
           (match list
@@ -44,9 +37,13 @@
           (syntax-error 'define-enum "enum names must be unique" list)))
 
       (define (enum-spec-names lis)
-        (map (match-lambda
-               (x x)
-               ((x _) x))
+        (map (lambda (x)
+               (let ((name (match x
+                             ((nm _) nm)
+                             (nm nm))))
+                 (unless (symbol? name)
+                   (syntax-error 'define-enum "invalid enum name" name))
+                 name))
              lis))
 
       (let* ((type-name (list-ref expr 1))
@@ -59,7 +56,6 @@
              (syntax-rules (rename 'syntax-rules))
              (oref (rename '%enum-ordinal->enum-no-check))
              (etype (rename 'etype)))
-        (check-enum-spec enum-spec)
         (check-unique-ids names)
         `(,(rename 'begin)
           (,define ,etype
