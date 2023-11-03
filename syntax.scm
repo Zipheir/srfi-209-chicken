@@ -31,6 +31,18 @@
                  (e (syntax-error 'define-enum "invalid enum spec" e)))
                lis))
 
+      (define (unique-ids? list)
+        (let unique ((list list))
+          (match list
+            (() #t)
+            ((x . rest)
+             (and (not (memq x rest))
+                  (unique rest))))))
+
+      (define (check-unique-ids list)
+        (unless (unique-ids? list)
+          (syntax-error 'define-enum "enum names must be unique" list)))
+
       (define (enum-spec-names lis)
         (map (match-lambda
                (x x)
@@ -48,6 +60,7 @@
              (oref (rename '%enum-ordinal->enum-no-check))
              (etype (rename 'etype)))
         (check-enum-spec enum-spec)
+        (check-unique-ids names)
         `(,(rename 'begin)
           (,define ,etype
             (,(rename 'make-enum-type) (quote ,enum-spec)))
