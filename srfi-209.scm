@@ -3,7 +3,6 @@
    enum<=? enum>=?
 
    make-enum-type
-   enum-type-enum-vector   ; Needed for macro. Shouldn't be exported.
 
    enum-type enum-name enum-ordinal enum-value
 
@@ -40,6 +39,10 @@
    make-enum-comparator
 
    define-enum define-enumeration
+
+   ;;; Internal use.
+
+   %enum-ordinal->enum-no-check
    )
 
   (import-for-syntax (matchable)

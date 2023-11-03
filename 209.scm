@@ -778,20 +778,16 @@
               (define (rename 'define))
               (define-syntax (rename 'define-syntax))
               (syntax-rules (rename 'syntax-rules))
-              (etype-vec (rename 'enum-type-enum-vector))
-              (etype (rename 'etype))
-              (evec (rename 'evec)))
+              (oref (rename '%enum-ordinal->enum-no-check))
+              (etype (rename 'etype)))
           `(,(rename 'begin)
             (,define ,etype
               (,(rename 'make-enum-type) (quote ,enum-spec)))
 
-            (,define ,evec (,etype-vec ,etype))
-
             (,define-syntax ,type-name
               (,syntax-rules ,names
                 ,@(map (lambda (nm i)
-                         `((_ ,nm)
-                           (,(rename vector-ref) ,evec ,i)))
+                         `((_ ,nm) (,oref ,etype ,i)))
                        names
                        indices)
                 ((_ name)
