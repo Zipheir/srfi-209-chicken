@@ -19,6 +19,17 @@
 ;;; TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;; SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+;; Like 'assert', but calls 'syntax-error' if the tested condition
+;; is false.
+(begin-for-syntax
+ (define-syntax assert/syntax-error
+   (syntax-rules ()
+     ((_ loc expr)
+      (assert/syntax-error loc expr "syntax violation"))
+     ((_ loc expr msg)
+      (unless expr
+        (syntax-error loc msg 'expr))))))
+
 ;;;; SRFI 209 syntax
 
 (define-syntax define-enum
@@ -56,6 +67,12 @@
              (syntax-rules (rename 'syntax-rules))
              (oref (rename '%enum-ordinal->enum-no-check))
              (etype (rename 'etype)))
+        (assert/syntax-error 'define-enum (symbol? type-name)
+         "type name must be an identifier")
+        (assert/syntax-error 'define-enum
+          (or (pair? enum-spec) (null? enum-spec)))
+        (assert/syntax-error 'define-enum (symbol? constructor)
+         "constructor name must be an identifier")
         (check-unique-ids names)
         `(,(rename 'begin)
           (,define ,etype

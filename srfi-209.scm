@@ -47,6 +47,7 @@
                      (srfi 1))
   (import (scheme)
           (except (chicken base) assert)
+          (chicken syntax)
           (chicken type)
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
