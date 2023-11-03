@@ -38,11 +38,8 @@
 
    make-enum-comparator
 
-   define-enum define-enumeration
-
-   ;;; Internal use.
-
-   %enum-ordinal->enum-no-check
+   (syntax: define-enum %enum-ordinal->enum-no-check)
+   define-enumeration
    )
 
   (import-for-syntax (matchable)
