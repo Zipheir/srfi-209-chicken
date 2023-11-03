@@ -75,4 +75,6 @@
               (hash-table-set! res k v)
               (loop (successor seed)))))))
 
-  (include "209.scm"))
+  (include "209.scm")
+  (include "syntax.scm")
+  )
