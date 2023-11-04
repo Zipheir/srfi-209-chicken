@@ -40,7 +40,7 @@
           (match list
             (() #t)
             ((x . rest)
-             (and (not (memq x rest))
+             (and (not (find (lambda (y) (compare x y)) rest))
                   (unique rest))))))
 
       (define (check-unique-ids list)
