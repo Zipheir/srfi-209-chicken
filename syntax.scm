@@ -70,7 +70,8 @@
              (names (enum-spec-names enum-spec))
              (indices (iota (length enum-spec)))
              (oref (rename '%enum-ordinal->enum-no-check)))
-        (let-renamed rename (define define-syntax syntax-rules etype)
+        (let-renamed rename (define define-syntax syntax-rules etype
+                             begin enum-set)
         (assert/syntax-error 'define-enum (symbol? type-name)
          "type name must be an identifier")
         (assert/syntax-error 'define-enum
@@ -78,7 +79,7 @@
         (assert/syntax-error 'define-enum (symbol? constructor)
          "constructor name must be an identifier")
         (check-unique-ids names)
-        `(,(rename 'begin)
+        `(,begin
           (,define ,etype
             (,(rename 'make-enum-type) (quote ,enum-spec)))
 
@@ -91,7 +92,12 @@
               ((_ name)
                (,(rename syntax-error) (quote ,type-name)
                                        "invalid enum name"
-                                       'name))))))))))
+                                       'name))))
+
+          (,define-syntax ,constructor
+            (,syntax-rules ()
+              ((_ arg ...)
+               (,enum-set ,etype (,type-name arg) ...))))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding
