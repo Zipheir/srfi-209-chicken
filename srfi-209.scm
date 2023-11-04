@@ -46,6 +46,7 @@
                      (srfi 1))
   (import (scheme)
           (except (chicken base) assert)
+          (chicken platform)
           (chicken syntax)
           (chicken type)
           (srfi 1)
@@ -55,6 +56,8 @@
           (srfi 178)
           typed-records
           )
+
+  (register-feature! 'srfi-209)
 
   (define-syntax assert
     (syntax-rules ()
