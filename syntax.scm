@@ -72,32 +72,32 @@
              (oref (rename '%enum-ordinal->enum-no-check)))
         (let-renamed rename (define define-syntax syntax-rules etype
                              begin enum-set)
-        (assert/syntax-error 'define-enum (symbol? type-name)
-         "type name must be an identifier")
-        (assert/syntax-error 'define-enum
-          (or (pair? enum-spec) (null? enum-spec)))
-        (assert/syntax-error 'define-enum (symbol? constructor)
-         "constructor name must be an identifier")
-        (check-unique-ids names)
-        `(,begin
-          (,define ,etype
-            (,(rename 'make-enum-type) (quote ,enum-spec)))
+          (assert/syntax-error 'define-enum (symbol? type-name)
+           "type name must be an identifier")
+          (assert/syntax-error 'define-enum
+            (or (pair? enum-spec) (null? enum-spec)))
+          (assert/syntax-error 'define-enum (symbol? constructor)
+           "constructor name must be an identifier")
+          (check-unique-ids names)
+          `(,begin
+            (,define ,etype
+              (,(rename 'make-enum-type) (quote ,enum-spec)))
 
-          (,define-syntax ,type-name
-            (,syntax-rules ,names
-              ,@(map (lambda (nm i)
-                       `((_ ,nm) (,oref ,etype ,i)))
-                     names
-                     indices)
-              ((_ name)
-               (,(rename syntax-error) (quote ,type-name)
-                                       "invalid enum name"
-                                       'name))))
+            (,define-syntax ,type-name
+              (,syntax-rules ,names
+                ,@(map (lambda (nm i)
+                         `((_ ,nm) (,oref ,etype ,i)))
+                       names
+                       indices)
+                ((_ name)
+                 (,(rename syntax-error) (quote ,type-name)
+                                         "invalid enum name"
+                                         'name))))
 
-          (,define-syntax ,constructor
-            (,syntax-rules ()
-              ((_ arg ...)
-               (,enum-set ,etype (,type-name arg) ...))))))))))
+            (,define-syntax ,constructor
+              (,syntax-rules ()
+                ((_ arg ...)
+                 (,enum-set ,etype (,type-name arg) ...))))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding
