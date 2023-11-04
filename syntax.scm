@@ -70,7 +70,7 @@
              (indices (iota (length enum-spec)))
              (oref (rename '%enum-ordinal->enum-no-check)))
         (let-renamed rename (define define-syntax syntax-rules etype
-                             begin enum-set)
+                             begin enum-set make-enum-type)
           (assert/syntax-error 'define-enum (symbol? type-name)
            "type name must be an identifier")
           (assert/syntax-error 'define-enum
@@ -80,7 +80,7 @@
           (check-unique-ids names)
           `(,begin
             (,define ,etype
-              (,(rename 'make-enum-type) (quote ,enum-spec)))
+              (,make-enum-type (quote ,enum-spec)))
 
             (,define-syntax ,type-name
               (,syntax-rules ,names
