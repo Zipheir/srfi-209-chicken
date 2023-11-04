@@ -42,8 +42,7 @@
    define-enumeration
    )
 
-  (import-for-syntax (matchable)
-                     (chicken syntax)
+  (import-for-syntax (chicken syntax)
                      (srfi 1))
   (import (scheme)
           (except (chicken base) assert)
