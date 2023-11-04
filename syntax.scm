@@ -19,16 +19,17 @@
 ;;; TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 ;;; SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-;; Like 'assert', but calls 'syntax-error' if the tested condition
-;; is false.
 (begin-for-syntax
+ ;; Like 'assert', but calls 'syntax-error' if the tested condition
+ ;; is false.
  (define-syntax assert/syntax-error
    (syntax-rules ()
      ((_ loc expr)
       (assert/syntax-error loc expr "syntax violation"))
      ((_ loc expr msg)
       (unless expr
-        (syntax-error loc msg 'expr))))))
+        (syntax-error loc msg 'expr)))))
+ )
 
 ;;;; SRFI 209 syntax
 
