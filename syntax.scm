@@ -60,7 +60,7 @@
                (cond ((symbol? x) x)
                      ((and (pair? x) (= (length x) 2)) (car x))
                      (else (syntax-error 'define-enum
-                             "invalid enum name" name))))
+                             "invalid enum name" x))))
              lis))
 
       (let* ((type-name (list-ref expr 1))
