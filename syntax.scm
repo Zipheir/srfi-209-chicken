@@ -29,6 +29,12 @@
      ((_ loc expr msg)
       (unless expr
         (syntax-error loc msg 'expr)))))
+
+ ;; Helper for writing complex ER macros.
+ (define-syntax let-renamed
+   (syntax-rules ()
+     ((_ rename (id ...) e0 e1 ...)
+      (let ((id (rename 'id)) ...) e0 e1 ...))))
  )
 
 ;;;; SRFI 209 syntax
@@ -63,11 +69,8 @@
              (constructor (list-ref expr 3))
              (names (enum-spec-names enum-spec))
              (indices (iota (length enum-spec)))
-             (define (rename 'define))
-             (define-syntax (rename 'define-syntax))
-             (syntax-rules (rename 'syntax-rules))
-             (oref (rename '%enum-ordinal->enum-no-check))
-             (etype (rename 'etype)))
+             (oref (rename '%enum-ordinal->enum-no-check)))
+        (let-renamed rename (define define-syntax syntax-rules etype)
         (assert/syntax-error 'define-enum (symbol? type-name)
          "type name must be an identifier")
         (assert/syntax-error 'define-enum
@@ -88,7 +91,7 @@
               ((_ name)
                (,(rename syntax-error) (quote ,type-name)
                                        "invalid enum name"
-                                       'name)))))))))
+                                       'name))))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding
