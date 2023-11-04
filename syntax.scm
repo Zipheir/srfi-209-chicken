@@ -44,24 +44,23 @@
     (lambda (expr rename compare)
       (define (unique-ids? list)
         (let unique ((list list))
-          (match list
-            (() #t)
-            ((x . rest)
-             (and (not (find (lambda (y) (compare x y)) rest))
-                  (unique rest))))))
+          (or (null? list)
+              (let ((x (car list))
+                    (rest (cdr list)))
+                (and (not (find (lambda (y) (compare x y)) rest))
+                     (unique rest))))))
 
       (define (check-unique-ids list)
         (unless (unique-ids? list)
           (syntax-error 'define-enum "enum names must be unique" list)))
 
+      ;; Extract the enum names and check for enum-spec well-formedness.
       (define (enum-spec-names lis)
         (map (lambda (x)
-               (let ((name (match x
-                             ((nm _) nm)
-                             (nm nm))))
-                 (unless (symbol? name)
-                   (syntax-error 'define-enum "invalid enum name" name))
-                 name))
+               (cond ((symbol? x) x)
+                     ((and (pair? x) (= (length x) 2)) (car x))
+                     (else (syntax-error 'define-enum
+                             "invalid enum name" name))))
              lis))
 
       (let* ((type-name (list-ref expr 1))
