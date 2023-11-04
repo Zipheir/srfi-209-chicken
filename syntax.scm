@@ -88,9 +88,13 @@
                          `((_ ,nm) (,oref ,etype ,i)))
                        names
                        indices)
-                ((_ name)
+                ((_ (x ...))
                  (,(rename syntax-error) (quote ,type-name)
                                          "invalid enum name"
+                                         '(x ...)))
+                ((_ name)
+                 (,(rename syntax-error) (quote ,type-name)
+                                         "enum name not found in type"
                                          'name))))
 
             (,define-syntax ,constructor
