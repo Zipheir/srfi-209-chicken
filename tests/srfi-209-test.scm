@@ -22,7 +22,7 @@
 ;;; Test suite for chibi-scheme (http://synthcode.com/scheme/chibi)
 ;;; Adapted for the CHICKEN test egg.
 
-(import (scheme)
+(import (scheme base)
         (chicken base)
         (srfi 1)
         (srfi 128)

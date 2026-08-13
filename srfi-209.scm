@@ -44,7 +44,7 @@
 
   (import-for-syntax (chicken syntax)
                      (srfi 1))
-  (import (scheme)
+  (import (except (scheme base) error)
           (except (chicken base) assert)
           (chicken platform)
           (chicken syntax)
