@@ -1,0 +1,829 @@
+== SRFI-209: Enums and enum sets
+
+Enums are objects that serve to form sets of distinct classes that specify
+different modes of operation for a procedure. Their use fosters portable and
+readable code.
+
+Like symbols, enums are lightweight and can be quickly compared with
+{{eq?}}; unlike symbols, enums of one type are disjoint from those of
+other types, and type information is carried within each enum.  Enum
+sets also provide a powerful means of constructing and manipulating
+homogeneous collections of enums.
+
+[[toc:]]
+
+== SRFI Description
+
+This page includes excerpts from the SRFI document, but is primarily
+intended to document the forms exported by this egg.  For a full
+description of the SRFI, see the full
+[[https://srfi.schemers.org/srfi-209/srfi-209.html|SRFI document]].
+
+== Authors
+
+John Cowan (text) and Wolfgang Corcoran-Mathe (implementation)
+
+== Implementation
+
+This egg provides the SRFI 209 sample implementation, which is
+mutative: the side-effecting enum-set forms (those with a {{!}} suffix)
+are primitive, and their non-mutative variants are wrappers which
+copy their enum-set arguments before mutating them.  Therefore, the
+side-effecting forms are preferable in performance-critical code.
+
+== Specification
+
+Many procedures in many libraries accept arguments from a finite set (usually
+a fairly small one), or subsets of a finite set to describe one or more modes
+of operation. Offering a mechanism for dealing with such values fosters
+portable and readable code, much as records do for compound values, or
+multiple values for procedures computing several results.
+
+This SRFI provides something related to the ''enums'' of Java version 5 and
+later. These are objects of a type disjoint from all others that are grouped
+into ''enum types'' (called ''enum classes'' in Java). In Java, each enum type
+declares the names and types of values associated with each object, but in
+this SRFI an enum object has exactly one value; this is useful when
+translating from C to record the numeric value, but has other uses as well.
+
+=== Enum collections
+
+''Enum sets'' are used to represent multiple enums that belong to the same type.
+They provide a subset of the operations provided by
+[[https://srfi.schemers.org/srfi-113/srfi-113.html|SRFI 113]] general sets.
+
+=== R6RS compatibility
+
+This SRFI provides the same procedures as the {{(rnrs enums)}} library. In that
+library, neither enum types nor enum objects are exposed--only enum-sets and
+the names of enums. (There are no enum values or ordinals.) Some of the
+R6RS-specific procedures given below operate in those terms and are redundant with
+other procedures. These are deprecated, and have been marked with [R6RS] and
+set in small print.
+
+=== Predicates
+
+<procedure>(enum-type? obj)</procedure>
+
+Returns {{#t}} if ''obj'' is an enum type, and {{#f}} otherwise.
+
+<procedure>(enum? obj)</procedure>
+
+Returns {{#t}} if ''obj'' is an enum, and {{#f}} otherwise.
+
+<procedure>(enum-type-contains? enum-type enum)</procedure>
+
+Returns {{#t}} if ''enum'' belongs to ''enum-type'', and {{#f}} otherwise.
+
+<enscript highlight="scheme">
+(enum-type-contains? color (enum-name->enum color 'red)) ⇒ #t
+(enum-type-contains? pizza (enum-name->enum color 'red)) ⇒ #f
+</enscript>
+
+<procedure>(enum=? enum0 enum1 enum …)</procedure>
+
+Returns {{#t}} if all the arguments are the same enum in the sense of {{eq?}}
+(which is equivalent to having the same name and ordinal) and {{#f}} otherwise.
+It is an error to apply {{enum=?}} to enums belonging to different enum types.
+
+<enscript highlight="scheme">
+(enum=? color-red color-blue) ⇒ #f
+(enum=? pizza-funghi (enum-name->enum pizza 'funghi)) ⇒ #t
+(enum=? color-red (enum-name->enum color 'red) color-blue) ⇒ #f
+</enscript>
+
+<procedure>(enum<? enum0 enum1 enum …)</procedure>
+<procedure>(enum>? enum0 enum1 enum …)</procedure>
+<procedure>(enum<=? enum0 enum1 enum …)</procedure>
+<procedure>(enum>=? enum0 enum1 enum …)</procedure>
+
+These predicates return {{#t}} if their arguments are enums whose ordinals are
+in increasing, decreasing, non-decreasing, and non-increasing order
+respectively, and {{#f}} otherwise. It is an error unless all of the arguments
+belong to the same enum type.
+
+<enscript highlight="scheme">
+(enum<? (enum-ordinal->enum color 0) (enum-ordinal->enum color 1)) ⇒ #t
+
+(enum>? (enum-ordinal->enum color 2) (enum-ordinal->enum color 1)) ⇒ #t
+
+(enum>=? (enum-ordinal->enum color 2)
+         (enum-ordinal->enum color 1)
+         (enum-ordinal->enum color 1))
+ ⇒ #t
+</enscript>
+
+
+=== Enum type constructor
+
+<procedure>(make-enum-type list)</procedure>
+
+Returns a newly allocated enum type containing a fixed set of newly allocated
+enums. Both enums and enum types are immutable, and it is not possible to
+create an enum except as part of creating an enum type.
+
+The elements of ''list'' are either symbols or two-element lists, where each
+list has a symbol as the first element and any value as the second element.
+Each list element causes a single enum to be generated, and the enum's name is
+specified by the symbol. It is an error unless all the symbols are distinct
+within an enum type. The position of the element in ''list'' is the ordinal of
+the corresponding enum, so ordinals within an enum type are also distinct. If
+a value is given, it becomes the value of the enum; otherwise the enum’s value
+is the same as the ordinal.
+
+'''{{define-enum}} should be preferred to {{make-enum-set}}. It
+generates efficient accessors and set constructors and can catch
+errors at expansion time.'''
+
+The following example enum types will be used in examples throughout this
+SRFI, with the identifier ''type-name'' referring to the enum of type ''type''
+with name ''name''.
+
+<enscript highlight="scheme">
+(define color
+  (make-enum-type '(red orange yellow green cyan blue violet)))
+
+(define us-traffic-light
+  (make-enum-type '(red yellow green)))
+
+(define pizza
+  (make-enum-type '((margherita "tomato and mozzarella")
+                    (funghi "mushrooms")
+                    (chicago "deep-dish")
+                    (hawaiian "pineapple and ham"))))
+</enscript>
+
+=== Enum accessors
+
+<procedure>(enum-type enum)</procedure>
+
+Returns the enum type to which ''enum'' belongs.
+
+<procedure>(enum-name enum)</procedure>
+
+Returns the name (symbol) associated with ''enum''.
+
+<procedure>(enum-ordinal enum)</procedure>
+
+Returns the ordinal (exact integer) associated with ''enum''.
+
+<procedure>(enum-value enum)</procedure>
+
+Returns the value associated with ''enum''.
+
+=== Enum finders
+
+These procedures use an enum type and one of the properties of an enum to find
+the enum object.
+
+<procedure>(enum-name->enum enum-type symbol)</procedure>
+
+If there exists an enum belonging to ''enum-type'' named ''symbol'', returns it;
+otherwise return {{#f}}.
+
+<enscript highlight="scheme">
+(enum-name (enum-name->enum color 'green)) ⇒ green
+(enum-name->enum color 'mushroom) ⇒ #f
+</enscript>
+
+<procedure>(enum-ordinal->enum enum-type exact-integer)</procedure>
+
+If there exists an enum belonging to ''enum-type'' whose ordinal is
+''exact-integer'', returns it; otherwise return {{#f}}.
+
+<enscript highlight="scheme">
+(enum-name (enum-ordinal->enum color 3)) ⇒ green
+(enum-ordinal->enum color 10) ⇒ #f
+</enscript>
+
+Note: There is no way to find an enum by its value, since values need not be
+unique.
+
+The following convenience procedures provide enum-finding followed by access
+to a property.
+
+<procedure>(enum-name->ordinal enum-set symbol)</procedure>
+
+Returns the ordinal of the enum belonging to ''enum-type'' whose name is
+''symbol''. It is an error if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-name->ordinal color 'blue) ⇒ 5
+</enscript>
+
+<procedure>(enum-name->value enum-set symbol)</procedure>
+
+Returns the value of the enum belonging to ''enum-type'' whose name is ''symbol''.
+It is an error if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-name->value pizza 'funghi) ⇒ "mushrooms"
+(enum-name->value color 'blue) ⇒ 5
+</enscript>
+
+<procedure>(enum-ordinal->name enum-set exact-integer)</procedure>
+
+Returns the name of the enum belonging to ''enum-type'' whose ordinal is
+''exact-integer''. It is an error if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-ordinal->name color 0) ⇒ red
+(enum-ordinal->name pizza 3) ⇒ hawaiian
+</enscript>
+
+<procedure>(enum-ordinal->value enum-set exact-integer)</procedure>
+
+Returns the value of the enum belonging to ''enum-type'' whose ordinal is
+''exact-integer''. It is an error if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-ordinal->value pizza 1) ⇒ "mushrooms"
+</enscript>
+
+
+=== Enum types
+
+<procedure>(enum-type-size enum-type)</procedure>
+
+Returns an exact integer equal to the number of enums in ''enum-type''.
+
+<procedure>(enum-min enum-type)</procedure>
+
+Returns the enum belonging to ''enum-type'' whose ordinal is 0.
+
+<enscript highlight="scheme">
+(enum-name (enum-min color)) ⇒ red
+(enum-name (enum-min pizza)) ⇒ margherita
+</enscript>
+
+<procedure>(enum-max enum-type)</procedure>
+
+Returns the enum belonging to ''enum-type'' whose ordinal is equal to the number
+of enums in the enum type minus 1.
+
+<enscript highlight="scheme">
+(enum-name (enum-max color)) ⇒ violet
+(enum-name (enum-max pizza)) ⇒ hawaiian
+</enscript>
+
+<procedure>(enum-type-enums enum-type)</procedure>
+
+Returns a list of the enums belonging to ''enum-type'' ordered by increasing
+ordinal.
+
+<enscript highlight="scheme">
+(map enum-name (enum-type-enums pizza)) ⇒
+  (margherita funghi chicago hawaiian)
+</enscript>
+
+<procedure>(enum-type-names enum-type)</procedure>
+
+Returns a list of the names of the enums belonging to ''enum-type'' ordered by
+increasing ordinal.
+
+<enscript highlight="scheme">
+(enum-type-names color) ⇒ (red orange yellow green cyan blue violet)
+</enscript>
+
+<procedure>(enum-type-values enum-type)</procedure>
+
+Returns a list of the values of the enums belonging to ''enum-type'' ordered by
+increasing ordinal.
+
+<enscript highlight="scheme">
+(enum-type-values pizza)
+ ⇒ ("tomato and mozzarella" "mushrooms" "deep-dish" "pineapple and ham")
+</enscript>
+
+=== Enum objects
+
+<procedure>(enum-next enum)</procedure>
+
+Returns the enum that belongs to the same enum type as ''enum'' and has an
+ordinal one greater than ''enum''. Returns {{#f}} if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-name (enum-next color-red)) ⇒ orange
+(enum-next (enum-max color)) ⇒ #f
+</enscript>
+
+<procedure>(enum-prev enum)</procedure>
+
+Returns the enum that belongs to the same enum type as ''enum'' and has an
+ordinal one less than ''enum''. Returns {{#f}} if there is no such enum.
+
+<enscript highlight="scheme">
+(enum-name (enum-prev color-orange)) ⇒ red
+(enum-prev (enum-min color)) ⇒ #f
+</enscript>
+
+
+=== Comparators
+
+<procedure>(make-enum-comparator enum-type)</procedure>
+
+Returns a [[srfi-128|SRFI 128]]
+comparator suitable for comparing enums that belong to ''enum-type''. The
+comparator contains both an ordering predicate and a hash function, and orders
+enums based on their ordinal values.
+
+<enscript highlight="scheme">
+(define pizza-comparator (make-enum-comparator pizza))
+
+(comparator-hashable? pizza-comparator) ⇒ #t
+(comparator-test-type pizza-comparator pizza-funghi) ⇒ #t
+(<? pizza-comparator pizza-margherita pizza-chicago) ⇒ #t
+</enscript>
+
+
+=== Enum set constructors
+
+<procedure>(enum-type->enum-set enum-type)</procedure>
+
+Returns an enum set containing all the enums that belong to ''enum-type''.
+
+<enscript highlight="scheme">
+(define color-set (enum-type->enum-set color))
+
+(define pizza-set (enum-type->enum-set pizza))
+
+(every (lambda (enum)
+         (enum-set-contains? pizza-set enum))
+       (enum-type-enums pizza))
+ ⇒ #t
+
+(enum-set-map->list enum-name color-set)
+ ⇒ (red orange yellow green cyan blue violet)
+</enscript>
+
+<procedure>(enum-set enum-type enum …)</procedure>
+
+Returns an enum set that can contain enums of the type ''enum-type'' and
+containing the ''enums''. It is an error unless all the ''enums'' belong to
+''enum-type''.
+
+<enscript highlight="scheme">
+(enum-set-contains? (enum-set color color-red color-blue) color-red)
+ ⇒ #t
+(enum-set-contains? (enum-set color color-red color-blue) color-orange)
+ ⇒ #f
+</enscript>
+
+<procedure>(list->enum-set enum-type list)</procedure>
+
+Returns an enum set with the specified ''enum-type'' that contains the members
+of ''list''. It is an error unless all the members are enums belonging to
+''enum-type''.
+
+<enscript highlight="scheme">
+(list->enum-set (enum-type-enums pizza)) = (enum-type->enum-set pizza)
+
+(enum-set-contains? (list->enum-set pizza (list pizza-funghi pizza-chicago))
+                    pizza-funghi)
+ ⇒ #t
+</enscript>
+
+<procedure>(enum-set-projection enum-type-or-set enum-set)</procedure>
+
+If ''enum-type-or-set'' is an enum set, its enum type is extracted and used;
+otherwise, the enum type is used directly. Returns an enum set containing the
+enums belonging to the enum type that have the same names as the members of
+''enum-set'', whose enum type need not be not the same as the enum-type.
+It is an error if ''enum-set'' contains an enum that does not correspond by
+name to an enum in ''enum-type-or-set''.
+
+<enscript highlight="scheme">
+(enum-set-projection us-traffic-light
+                     (enum-set color color-red color-green color-blue))
+ = (enum-set us-traffic-light
+             us-traffic-light-red us-traffic-light-green)
+</enscript>
+
+<procedure>(enum-set-copy enum-set)</procedure>
+
+Returns a copy of ''enum-set''.
+
+<procedure>[R6RS] (make-enumeration symbol-list)</procedure>
+
+Creates a newly allocated enum type. The names are the members of ''symbol-list'',
+and they appear in the enum set in the order given by the list. The
+values are the same as the names. Then an enum set containing all the enums of
+this enum type is newly allocated and returned. The enum type can be retrieved
+with {{enum-set-type}}.
+
+<procedure>[R6RS] (enum-set-universe enum-set)</procedure>
+
+Retrieves the enum type of ''enum-set'', and returns a newly allocated enum set
+containing all the enums of the enum type.
+
+<procedure>[R6RS] (enum-set-constructor enum-set)</procedure>
+
+Returns a procedure that accepts one argument, a list of symbols. This
+procedure returns a newly allocated enum set containing the enums whose names
+are members of the list of symbols. It is an error if any of the symbols is
+not the name of an enum in the enum type associated with ''enum-set''.
+Otherwise, {{#f}} is returned.
+
+=== Enum set predicates
+
+<procedure>(enum-set? obj)</procedure>
+
+Returns {{#t}} if ''obj'' is an enum-set and {{#f}} otherwise.
+
+<procedure>(enum-set-contains? enum-set enum)</procedure>
+
+Returns {{#t}} if ''enum'' is a member of ''enum-set''. It is an error if ''enum''
+does not belong to the same enum type as the members of ''enum-set''.
+
+<enscript highlight="scheme">
+(enum-set-contains? color-set color-blue) ⇒ #t
+(enum-set-contains? (enum-set-delete! color-set color-blue) color-blue) ⇒ #f
+</enscript>
+
+<procedure>[R6RS] (enum-set-member? symbol enum-set)</procedure>
+
+Returns {{#t}} if ''symbol'' is the name of a member of ''enum-set''. It is an error
+if ''symbol'' is not the name of an enum belonging to the enum type of
+''enum-set''.
+
+<procedure>(enum-set-empty? enum-set)</procedure>
+
+Returns {{#t}} if ''enum-set'' is empty, and {{#f}} otherwise.
+
+<enscript highlight="scheme">
+(enum-set-empty? color-set) ⇒ #f
+(enum-set-empty? (enum-set-delete-all! color-set (enum-set->enum-list color-set)))
+ ⇒ #t
+</enscript>
+
+<procedure>(enum-set-disjoint? enum-set1 enum-set2)</procedure>
+
+Returns {{#t}} if ''enum-set1'' and ''enum-set2'' do not have any enum objects in
+common, and {{#f}} otherwise. It is an error if the members of
+the enum sets do not belong to the same enum type.
+
+<enscript highlight="scheme">
+(define reddish
+  (list->enum-set (map (lambda (name)
+                         (enum-name->enum color name))
+                       '(red orange))))
+
+(define ~reddish
+  (list->enum-set (map (lambda (name)
+                         (enum-name->enum color name))
+                       '(yellow green cyan blue violet))))
+
+(enum-set-disjoint? color-set reddish) ⇒ #f
+(enum-set-disjoint? reddish ~reddish) ⇒ #t
+</enscript>
+
+Note that the following three procedures do not obey the trichotomy law, and
+cannot be used to define a comparator.
+
+<procedure>(enum-set=? enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set<? enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set>? enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set<=? enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set>=? enum-set-1 enum-set-2)</procedure>
+
+Returns {{#t}} if the members of ''enum-set-1'' are the same as / a proper subset
+of / a proper superset of / a subset of / a superset of ''enum-set-2''. It is an
+error if the members of the enum sets do not belong to the same type.
+
+<enscript highlight="scheme">
+(enum-set=? color-set (enum-set-copy color-set)) ⇒ #t
+(enum-set=? color-set reddish) ⇒ #f
+(enum-set<? reddish color-set) ⇒ #t
+(enum-set>? reddish color-set) ⇒ #f
+(enum-set<=? reddish color-set) ⇒ #t
+(enum-set>=? reddish color-set) ⇒ #f
+</enscript>
+
+<procedure>(enum-set-subset? enum-set-1 enum-set-2)</procedure>
+
+Returns {{#t}} if the set of the names of the elements of ''enum-set-1'' is a
+subset of the set of the names of the elements of ''enum-set-2''. Otherwise
+returns {{#f}}. Note that ''enum-set-1'' and ''enum-set-2'' can be of different enum
+types.
+
+<enscript highlight="scheme">
+(enum-set-subset? (enum-set color red blue)
+                  (enum-set color red green blue)) ⇒ #t
+
+(enum-set-subset? (enum-set us-traffic-light red green)
+                  (enum-set color red green blue)) ⇒ #t
+</enscript>
+
+<procedure>(enum-set-any? pred enum-set)</procedure>
+<procedure>(enum-set-every? pred enum-set)</procedure>
+
+Returns {{#t}} if any/every application of ''proc'' to the elements of ''enum-set''
+returns true, and {{#f}} otherwise.
+
+<enscript highlight="scheme">
+(enum-set-any? (lambda (e) (eqv? 'green (enum-name e)))
+               color-set)
+ ⇒ #t
+(enum-set-any? (lambda (e) (eqv? 'green (enum-name e)))
+               reddish)
+ ⇒ #f
+(enum-set-every? (lambda (e) (eq? 'green (enum-name e)))
+                 color-set)
+ ⇒ #f
+(enum-set-every? (lambda (e) (string? (enum-value e)))
+                 pizza-set)
+ ⇒ #t
+</enscript>
+
+=== Enum set accessors
+
+<procedure>(enum-set-type enum-set)</procedure>
+
+Returns the enum type associated with ''enum-set''.
+
+<procedure>[R6RS] (enum-set-indexer enum-set)</procedure>
+
+Returns a procedure that accepts one argument, a symbol. When this procedure
+is called, if the symbol is the name of an enum in ''enum-set'', then the
+ordinal of that enum is returned. Otherwise, {{#f}} is returned.
+
+=== Enum set mutators
+
+These procedures come in pairs. Procedures whose names end in {{!}}
+are side-effecting; they modify and return their ''enum-set'' argument.
+Other procedures are functional and return a newly
+allocated modified copy of their ''enum-set'' argument.
+
+<procedure>(enum-set-adjoin enum-set enum …)</procedure>
+<procedure>(enum-set-adjoin! enum-set enum …)</procedure>
+
+Returns an enum set that contains the members of ''enum-set'' and the ''enums''.
+It is an error if the members of the result do not all belong to the same enum
+type.
+
+<enscript highlight="scheme">
+(define reddish+blue (enum-set-adjoin reddish color-blue))
+
+(enum-set<? reddish reddish+blue) ⇒ #t
+(enum-set-contains? reddish+blue color-blue) ⇒ #t
+</enscript>
+
+<procedure>(enum-set-delete enum-set enum …)</procedure>
+<procedure>(enum-set-delete! enum-set enum …)</procedure>
+
+Returns an enum set that contains the members of ''enum-set'' excluding the
+''enums''.
+
+<enscript highlight="scheme">
+(define no-blue (enum-set-delete color-set color-blue))
+
+(enum-set<? no-blue color-set) ⇒ #t
+(enum-set-contains? no-blue color-blue) ⇒ #f
+</enscript>
+
+<procedure>(enum-set-delete-all enum-set list …)</procedure>
+<procedure>(enum-set-delete-all! enum-set list …)</procedure>
+
+Returns an enum set that contains the members of ''enum-set'' excluding the
+members of ''list''.
+
+<enscript highlight="scheme">
+(define empty-colors
+  (enum-set-delete-all color-set (enum-set->enum-list color-set)))
+
+(enum-set<? empty-colors reddish) ⇒ #t
+(enum-set-empty? empty-colors) ⇒ #t
+</enscript>
+
+=== Enum set operations
+
+<procedure>(enum-set-size enum-set)</procedure>
+
+Returns the number of elements in ''enum-set''.
+
+<enscript highlight="scheme">
+(enum-set-size (enum-set color color-red color-blue)) ⇒ 2
+</enscript>
+
+<procedure>(enum-set->enum-list enum-set)</procedure>
+<procedure>(enum-set->list enum-set)</procedure>
+
+Returns a list containing the members of ''enum-set'', whereas the
+{{set->enum-list}} procedure returns a list containing the names of
+the members of ''enum-set''. In either case, the list will be in
+increasing order of the enums.
+
+<enscript highlight="scheme">
+(map enum-name (enum-set->enum-list reddish)) ⇒ (red orange)
+(list->enum-set (enum-set->enum-list color-set)) ⇒ color-set
+</enscript>
+
+<procedure>(enum-set-count pred enum-set)</procedure>
+
+Returns an exact integer, the number of elements of ''enum-set'' that satisfy
+''pred''.
+
+<enscript highlight="scheme">
+(enum-set-count (lambda (e) (> (enum-ordinal e) 3))
+                color-set)
+ ⇒ 3
+</enscript>
+
+<procedure>(enum-set-filter! pred enum-set)</procedure>
+<procedure>(enum-set-remove! pred enum-set)</procedure>
+
+Side-effecting procedure.  Preserves the elements of ''enum-set'' that
+satisfy / do not satisfy ''pred'' and deletes the rest.  Modifies and
+returns ''enum-set''.
+
+<procedure>(enum-set-filter pred enum-set)</procedure>
+<procedure>(enum-set-remove pred enum-set)</procedure>
+
+Returns an enum set containing the enums in ''enum-set'' that satisfy / do not
+satisfy ''pred''.
+
+<procedure>(enum-set-map->list proc enum-set)</procedure>
+
+Invokes ''proc'' on each member of ''enum-set'' in increasing ordinal order. The
+results are made into a list and returned.
+
+<enscript highlight="scheme">
+(enum-set-map->list enum-name
+                    (enum-set-filter (lambda (e) (> (enum-ordinal e) 3))
+                                     color-set))
+ ⇒ '(cyan blue violet)
+</enscript>
+
+<procedure>(enum-set-for-each proc enum-set)</procedure>
+
+Invokes ''proc'' on each member of ''enum-set'' in increasing ordinal order and
+discards the rest. The result is an unspecified value.
+
+<enscript highlight="scheme">
+(let ((s ""))
+  (begin
+   (enum-set-for-each (lambda (e)
+                        (set! s (string-append s (enum-value e) " ")))
+                      (enum-set pizza pizza-margherita pizza-chicago))
+   s))
+   ⇒ "tomato and mozzarella deep-dish "
+</enscript>
+
+<procedure>(enum-set-fold proc nil enum-set)</procedure>
+
+The current state is initialized to ''nil'', and ''proc'' is invoked on each
+element of ''enum-set'' in increasing ordinal order and the current state,
+setting the current state to the result. The algorithm is repeated until all
+the elements of ''enum-set'' have been processed. Then the current state is
+returned.
+
+<enscript highlight="scheme">
+(enum-set-fold cons '() color-set) = (reverse (enum-set->enum-list color-set))
+</enscript>
+
+=== Enum set logical operations
+
+These procedures come in pairs. Procedures whose names end in {{!}}
+are linear-update: that is, they may or may not modify their
+''enum-set'' argument(s), and any existing references to them are
+invalidated. Other procedures are functional and return a newly
+allocated modified copy of their ''enum-set'' argument.
+
+<procedure>(enum-set-complement enum-set)</procedure>
+<procedure>(enum-set-complement! enum-set)</procedure>
+
+Returns an enum set that contains the elements of the enum type of ''enum-set''
+that are not members of ''enum-set''.
+
+<procedure>(enum-set-union enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set-union! enum-set-1 enum-set-2)</procedure>
+
+Returns an enum set containing all the elements of either ''enum-set-1'' or
+''enum-set-2''. It is an error if all the elements of the result do not belong
+to the same enum type.
+
+<enscript highlight="scheme">
+(enum-set-map->list enum-name
+                    (enum-set-union (enum-set color color-orange)
+                                    (enum-set color color-blue)))
+ ⇒ (orange blue)
+
+(enum-set=? color-set (enum-set-union! reddish ~reddish)) ⇒ #t
+</enscript>
+
+<procedure>(enum-set-intersection! enum-set-1 enum-set-2)</procedure>
+
+Returns an enum set containing all the elements that appear in both
+''enum-set-1'' and ''enum-set-2''. It is an error if all the elements of
+the result do not belong to the same enum type.
+
+<enscript highlight="scheme">
+(enum-set-empty? (enum-set-intersection! reddish ~reddish))
+ ⇒ #t
+</enscript>
+
+<procedure>(enum-set-difference enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set-difference! enum-set-1 enum-set-2)</procedure>
+
+Returns an enum set containing the elements of ''enum-set-1'' but not
+''enum-set-2''. It is an error if all the elements of the result do not
+belong to the same enum type.
+
+<enscript highlight="scheme">
+(enum-set=? ~reddish (enum-set-difference color-set reddish))
+ ⇒ #t
+</enscript>
+
+<procedure>(enum-set-xor enum-set-1 enum-set-2)</procedure>
+<procedure>(enum-set-xor! enum-set-1 enum-set-2)</procedure>
+
+Returns an enum set containing all the elements that appear in either
+''enum-set-1'' or ''enum-set-2'' but not both. It is an error if all the
+elements of the result do not belong to the same enum type.
+
+<enscript highlight="scheme">
+(enum-set=? color-set (enum-set-xor reddish ~reddish))
+ ⇒ #t
+
+(enum-set-empty? (enum-set-xor reddish reddish)) ⇒ #t
+</enscript>
+
+=== Syntax
+
+<syntax>(define-enum type-name (name-value ...)  constructor-syntax)</syntax>
+
+<syntax>[R6RS] (define-enumeration type-name (name-value ...)  constructor-syntax)</syntax>
+
+These macros allocate a newly created enum type and provide two macros for
+constructing its members and sets of its members. They are definitions and can
+appear anywhere any other definition can appear. Each {{<name-value>}} is either
+a symbol naming an enum or a two-element list specifying the name and value of
+an enum.
+
+{{<type-name>}} is an identifier that is bound to a macro. When
+{{<type-name>}} is invoked as {{(<type-name> <symbol>)}}, it returns
+the enum named {{<symbol>}} in the case of {{define-enum}} or the
+symbol itself in the case of {{define-enumeration}}. If the symbol
+does not name any enum of the enum-type, an error is signaled at
+expansion time.
+
+{{<constructor-syntax>}} is an identifier that is bound to a macro
+that, given any finite sequence of the names of enums, possibly with
+duplicates, expands into an expression that evaluates to an enum set
+of those enums.
+
+If any of the symbols does not name any enum of the enum-type, an error is
+signaled at expansion time.
+
+== About this egg
+
+The following eggs are required:
+
+* [[srfi-1]]
+* [[srfi-69]]
+* [[srfi-128]]
+* [[srfi-178]]
+
+=== Maintainer
+
+Wolfgang Corcoran-Mathe <wcm at sigwinch dot xyzzy without the zy>
+
+=== Repository
+
+[[https://github.com/Zipheir/srfi-209-chicken|GitHub]]
+
+=== Version History
+
+; 0.1 : (2020-12-20) Initial release.
+; 0.2 : (2020-12-20) Use hash-tables for enum-type name tables; remove SRFI 146 dependency.
+; 1.1 : (2021-06-20) Update to latest upstream implementation.
+; 1.2.0 : (2022-01-04) Add types.
+; 1.2.1 : (2022-06-29) Minor type fixes.
+; 1.2.2 : (2022-08-08) Improve type checks and other error handling.
+; 1.3.0 : (2023-11-04) New procedural version of {{define-enum}}.
+
+== License
+
+  (C) 2020 John Cowan, Wolfgang Corcoran-Mathe.
+  (C) 2020--2023 Wolfgang Corcoran-Mathe.
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject
+  to the following conditions:
+
+  The above copyright notice and this permission notice (including
+  the next paragraph) shall be included in all copies or substantial
+  portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+  AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
