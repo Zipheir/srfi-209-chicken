@@ -46,8 +46,8 @@
                      (srfi 1))
   (import (scheme)
           (except (chicken base) assert)
+          (prefix (chicken condition) ccon:)
           (chicken platform)
-          (chicken syntax)
           (chicken type)
           (srfi 1)
           (only (srfi 69) make-hash-table hash-table-ref/default
@@ -56,6 +56,28 @@
           (srfi 178)
           typed-records
           )
+
+  ;; Apparently 'syntax-error' (the macro) is always imported on C6,
+  ;; even if you exclude it with only/except.  (Why can't CHICKEN join
+  ;; the rest of the Scheme world and respect library boundaries?)  So
+  ;; we have to use our own name for the procedural form.
+  (cond-expand
+    (chicken-6
+     (import (only (scheme base) include exact-integer? raise)
+             (scheme case-lambda))
+     ;; Procedural syntax-error a la the old (chicken syntax) one.
+     (define (proc-syntax-error loc msg . args)
+       (raise
+        (ccon:make-composite-condition
+         (ccon:make-property-condition 'exn
+          'location loc
+          'message msg
+          'arguments args)
+         (ccon:make-property-condition 'syntax)))))
+    (chicken-5
+     (import (except (chicken syntax) syntax-error)
+             (rename (only (chicken syntax) syntax-error)
+                     (syntax-error proc-syntax-error)))))
 
   (register-feature! 'srfi-209)
 
