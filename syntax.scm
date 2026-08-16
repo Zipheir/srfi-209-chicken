@@ -29,12 +29,6 @@
      ((_ loc expr msg)
       (unless expr
         (proc-syntax-error loc msg 'expr)))))
-
- ;; Helper for writing complex ER macros.
- (define-syntax let-renamed
-   (syntax-rules ()
-     ((_ rename (id ...) e0 e1 ...)
-      (let ((id (rename 'id)) ...) e0 e1 ...))))
  )
 
 ;;;; SRFI 209 syntax
@@ -68,9 +62,15 @@
              (constructor (list-ref expr 3))
              (names (enum-spec-names enum-spec))
              (indices (iota (length enum-spec)))
-             (oref (rename '%enum-ordinal->enum-no-check)))
-        (let-renamed rename (define define-syntax syntax-rules etype
-                             begin enum-set make-enum-type)
+             (oref (rename '%enum-ordinal->enum-no-check))
+             (%define (rename 'define))
+             (%define-syntax (rename 'define-syntax))
+             (%syntax-rules (rename 'syntax-rules))
+             (%etype (rename 'etype))
+             (%begin (rename 'begin))
+             (%enum-set (rename 'enum-set))
+             (%make-enum-type (rename 'make-enum-type))
+             (%proc-syntax-error (rename 'proc-syntax-error)))
           (assert/syntax-error 'define-enum (symbol? type-name)
            "type name must be an identifier")
           (assert/syntax-error 'define-enum
@@ -78,29 +78,29 @@
           (assert/syntax-error 'define-enum (symbol? constructor)
            "constructor name must be an identifier")
           (check-unique-ids names)
-          `(,begin
-            (,define ,etype
-              (,make-enum-type (quote ,enum-spec)))
+          `(,%begin
+            (,%define ,%etype
+              (,%make-enum-type (quote ,enum-spec)))
 
-            (,define-syntax ,type-name
-              (,syntax-rules ,names
+            (,%define-syntax ,type-name
+              (,%syntax-rules ,names
                 ,@(map (lambda (nm i)
                          `((_ ,nm) (,oref ,etype ,i)))
                        names
                        indices)
                 ((_ (x ...))
-                 (,(rename proc-syntax-error) (quote ,type-name)
+                 (%proc-syntax-error (quote ,type-name)
                                          "invalid enum name"
                                          '(x ...)))
                 ((_ name)
-                 (,(rename proc-syntax-error) (quote ,type-name)
+                 (%proc-syntax-error (quote ,type-name)
                                          "enum name not found in type"
                                          'name))))
 
-            (,define-syntax ,constructor
-              (,syntax-rules ()
+            (,%define-syntax ,constructor
+              (,%syntax-rules ()
                 ((_ arg ...)
-                 (,enum-set ,etype (,type-name arg) ...))))))))))
+                 (,%enum-set ,%etype (,type-name arg) ...)))))))))
 
 ;; [Deprecated] As define-enum, except that type-name is bound to
 ;; a macro that returns its symbol argument if the corresponding
