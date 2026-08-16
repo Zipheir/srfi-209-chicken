@@ -38,7 +38,8 @@
 
    make-enum-comparator
 
-   (syntax: define-enum %enum-ordinal->enum-no-check)
+   (syntax: define-enum %enum-ordinal->enum-no-check
+            assert/syntax-error)
    define-enumeration
    )
 
@@ -64,7 +65,8 @@
   (cond-expand
     (chicken-6
      (import (only (scheme base) include exact-integer? raise)
-             (scheme case-lambda))
+             (scheme case-lambda)
+             (chicken syntax))
      ;; Procedural syntax-error a la the old (chicken syntax) one.
      (define (proc-syntax-error loc msg . args)
        (raise

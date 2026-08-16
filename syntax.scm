@@ -85,7 +85,7 @@
             (,%define-syntax ,type-name
               (,%syntax-rules ,names
                 ,@(map (lambda (nm i)
-                         `((_ ,nm) (,oref ,etype ,i)))
+                         `((_ ,nm) (,oref ,%etype ,i)))
                        names
                        indices)
                 ((_ (x ...))
