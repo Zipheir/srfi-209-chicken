@@ -28,7 +28,7 @@
       (assert/syntax-error loc expr "syntax violation"))
      ((_ loc expr msg)
       (unless expr
-        (syntax-error loc msg 'expr)))))
+        (proc-syntax-error loc msg 'expr)))))
 
  ;; Helper for writing complex ER macros.
  (define-syntax let-renamed
@@ -52,14 +52,14 @@
 
       (define (check-unique-ids list)
         (unless (unique-ids? list)
-          (syntax-error 'define-enum "enum names must be unique" list)))
+          (proc-syntax-error 'define-enum "enum names must be unique" list)))
 
       ;; Extract the enum names and check for enum-spec well-formedness.
       (define (enum-spec-names lis)
         (map (lambda (x)
                (cond ((symbol? x) x)
                      ((and (pair? x) (= (length x) 2)) (car x))
-                     (else (syntax-error 'define-enum
+                     (else (proc-syntax-error 'define-enum
                              "invalid enum name" x))))
              lis))
 
@@ -89,11 +89,11 @@
                        names
                        indices)
                 ((_ (x ...))
-                 (,(rename syntax-error) (quote ,type-name)
+                 (,(rename proc-syntax-error) (quote ,type-name)
                                          "invalid enum name"
                                          '(x ...)))
                 ((_ name)
-                 (,(rename syntax-error) (quote ,type-name)
+                 (,(rename proc-syntax-error) (quote ,type-name)
                                          "enum name not found in type"
                                          'name))))
 
