@@ -801,6 +801,7 @@ Wolfgang Corcoran-Mathe <wcm at sigwinch dot xyzzy without the zy>
 ; 1.2.1 : (2022-06-29) Minor type fixes.
 ; 1.2.2 : (2022-08-08) Improve type checks and other error handling.
 ; 1.3.0 : (2023-11-04) New procedural version of {{define-enum}}.
+; 1.4.2 : (2026-08-17) Add support for CHICKEN 6.
 
 == License
 
