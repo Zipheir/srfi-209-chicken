@@ -1,5 +1,5 @@
 (repo git "git://github.com/Zipheir/srfi-209-chicken.git")
-(uri targz "https://codeload.github.com/Zipheir/srfi-209-chicken/archive/refs/tags/{egg-release}.tar.gz")
+(uri targz "https://github.com/Zipheir/srfi-209-chicken/archive/refs/tags/{egg-release}.tar.gz")
 (release "0.1")
 (release "0.2")
 (release "1.1")
